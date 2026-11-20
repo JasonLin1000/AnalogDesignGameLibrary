@@ -80,4 +80,4 @@ export function scoreLevel(level: Level, input: RunSet | SimResult): LevelScore 
   return { main, bonus, stars };
 }
 
-export const maxStars = (level: Level) => 1 + (level.stars?.length ?? 0);
+export const maxStars = (level: { stars?: unknown[] }) => 1 + (level.stars?.length ?? 0);

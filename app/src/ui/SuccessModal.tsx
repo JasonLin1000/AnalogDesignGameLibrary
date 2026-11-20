@@ -1,11 +1,11 @@
 import { useT } from '../i18n';
 import { maxStars } from '../levels/evaluate';
-import type { Level } from '../levels/types';
+import type { AnyLevel } from '../levels/types';
 import { Stars } from './BriefPanel';
 import { Modal } from './Dialogs';
 
 export function SuccessModal({ level, stars, onNext, onStay, hasNext }: {
-  level: Level; stars: number; onNext: () => void; onStay: () => void; hasNext: boolean;
+  level: AnyLevel; stars: number; onNext: () => void; onStay: () => void; hasNext: boolean;
 }) {
   const { t, L } = useT();
   const max = maxStars(level);

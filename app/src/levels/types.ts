@@ -59,5 +59,37 @@ export interface Chapter {
   id: number;
   title: Localized;
   intro: Localized;
-  levels: Level[];
+  levels: AnyLevel[];
 }
+
+// ---------------- layout levels (Phase 3) ----------------
+export interface LayoutSpec {
+  id: string;
+  label: Localized;
+  kind: 'drc' | 'lvs' | 'area' | 'pins';
+  max?: number;                        // area in µm²
+  layer?: import('../layout/types').LayerId; // pins: required pin layer
+}
+
+export interface LayoutLevel {
+  id: string;
+  chapter: number;
+  mode: 'layout';
+  title: Localized;
+  story: Localized;
+  objective: Localized;
+  concept: { title: Localized; body: Localized };
+  hints: Localized[];
+  reference: Circuit;                  // devices the layout must implement
+  ports: string[];                     // nets that must carry a pin label
+  checkBody?: boolean;                 // compare MOS body connections in LVS
+  pcells: import('../layout/types').PCellKind[]; // PCells the player may place
+  start: import('../layout/types').Layout;
+  specs: LayoutSpec[];
+  stars?: LayoutSpec[][];
+  skipTest?: boolean;
+  solutions: { layout: import('../layout/types').Layout; stars: number }[];
+}
+
+export type AnyLevel = Level | LayoutLevel;
+export const isLayoutLevel = (l: AnyLevel): l is LayoutLevel => (l as LayoutLevel).mode === 'layout';

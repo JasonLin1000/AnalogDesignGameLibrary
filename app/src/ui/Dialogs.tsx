@@ -78,8 +78,9 @@ export function LabelPrompt() {
   const { t } = useT();
   const ed = useEditor();
   const [name, setName] = useState('');
+  useEffect(() => { if (ed.askLabel) setName(''); }, [ed.askLabel]); // fresh name every time
   if (!ed.askLabel) return null;
-  const close = () => ed.setAskLabel(false);
+  const close = () => { setName(''); ed.setAskLabel(false); };
   return (
     <Modal title={t('label.title')} onClose={close}>
       <form className="props" onSubmit={(e) => {

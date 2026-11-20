@@ -1,4 +1,4 @@
-# App — 電路圖編輯器、模擬與關卡（第 0–6 章）
+# App — 電路圖、模擬、Layout 與關卡（第 0–7 章）
 
 Vite + React + TypeScript。模擬在 Web Worker 中以 ngspice-WASM 執行（見 [../engine](../engine/README.md)）。
 
@@ -22,7 +22,8 @@ npm run build      # 型別檢查 + 正式版建置到 dist/
 | `src/sim/mismatch.ts` | Pelgrom ΔVth 抽樣（可重現的亂數） |
 | `src/game/` | 進度（星星、解鎖）、模擬流程 |
 | `src/waveform/` | 波形圖 |
-| `src/ui/` | 首頁、工作台、說明面板、對話框 |
+| `src/layout/` | Layout：資料模型、矩形幾何、DRC 規則（`drc.ts`）、PCell、抽取（`extract.ts`）、LVS（`lvs.ts`）、評分、編輯器畫布與圖層面板 |
+| `src/ui/` | 首頁、電路圖工作台、Layout 工作台、說明面板、對話框 |
 | `src/i18n/` | 繁中 / 英文字典 |
 
 ## 新增關卡
@@ -34,6 +35,10 @@ npm run build      # 型別檢查 + 正式版建置到 dist/
 
 關卡以 TypeScript 物件撰寫（結構與 docs/PLAN.md 的 JSON 格式相同），享有型別檢查；之後的社群關卡編輯器可輸出同樣結構的 JSON。
 
-## 操作（參考 Virtuoso / LTspice）
+## Layout 操作
+
+R 矩形 · L 標籤（放在目前圖層）· I PCell · O 接觸窗堆疊（licon → mcon → via）· K 尺規（Shift+K 清除）· N 網路高亮 · Q / 雙擊 編輯座標 · C 複製 · 方向鍵微調（Shift = 0.05 µm）· 1–0 切換圖層 · F 全圖
+
+## 電路圖操作（參考 Virtuoso / LTspice）
 
 W 拉線 · L 標籤 · R 旋轉 · E 鏡像 · Q 屬性 · P 探針 · Del 刪除 · U / Ctrl+Z 復原 · F 全圖 · 滾輪縮放 · 中鍵或 Alt+拖曳平移 · Ctrl+Enter 模擬

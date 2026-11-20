@@ -3,6 +3,8 @@ import { useLang, useT } from './i18n';
 import { findLevel } from './levels';
 import { HomeScreen } from './ui/HomeScreen';
 import { Workbench } from './ui/Workbench';
+import { LayoutWorkbench } from './ui/LayoutWorkbench';
+import { isLayoutLevel, type Level } from './levels/types';
 
 type Route = { page: 'home' } | { page: 'level'; id: string } | { page: 'sandbox' };
 
@@ -39,7 +41,12 @@ export function App() {
       </header>
       {route.page === 'home' && <HomeScreen onPlay={(id) => go(`level/${id}`)} onSandbox={() => go('sandbox')} />}
       {route.page === 'level' && (
-        <Workbench level={findLevel(route.id)!} onExit={() => go('')} onGoto={(id) => go(`level/${id}`)} />
+        (() => {
+          const lv = findLevel(route.id)!;
+          return isLayoutLevel(lv)
+            ? <LayoutWorkbench level={lv} onExit={() => go('')} onGoto={(id) => go(`level/${id}`)} />
+            : <Workbench level={lv as Level} onExit={() => go('')} onGoto={(id) => go(`level/${id}`)} />;
+        })()
       )}
       {route.page === 'sandbox' && <Workbench level={null} onExit={() => go('')} onGoto={(id) => go(`level/${id}`)} />}
     </div>

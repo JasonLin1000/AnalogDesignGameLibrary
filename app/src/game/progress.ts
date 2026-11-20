@@ -1,7 +1,7 @@
 // Player progress (stars per level). Stored in localStorage; the game works without it.
 import { create } from 'zustand';
 import { CHAPTERS } from '../levels';
-import type { Level } from '../levels/types';
+import type { AnyLevel } from '../levels/types';
 
 interface ProgressState {
   stars: Record<string, number>;
@@ -54,7 +54,7 @@ export function chapterUnlocked(stars: Record<string, number>, chapterId: number
 }
 
 /** Levels unlock in order; a chapter's skip test is always open once the chapter is. */
-export function levelUnlocked(stars: Record<string, number>, level: Level, all = false): boolean {
+export function levelUnlocked(stars: Record<string, number>, level: AnyLevel, all = false): boolean {
   if (all) return true;
   if (!chapterUnlocked(stars, level.chapter)) return false;
   const ch = CHAPTERS.find((c) => c.id === level.chapter)!;
@@ -62,7 +62,7 @@ export function levelUnlocked(stars: Record<string, number>, level: Level, all =
   return i === 0 || level.skipTest === true || passed(stars, ch.levels[i - 1].id) || chapterComplete(stars, level.chapter);
 }
 
-export function nextLevel(level: Level): Level | undefined {
+export function nextLevel(level: AnyLevel): AnyLevel | undefined {
   const flat = CHAPTERS.flatMap((c) => c.levels);
   return flat[flat.findIndex((l) => l.id === level.id) + 1];
 }
