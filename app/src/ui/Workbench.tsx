@@ -11,7 +11,7 @@ import { BottomPanel } from './BottomPanel';
 import { BriefPanel } from './BriefPanel';
 import { LabelPrompt, PropertyDialog } from './Dialogs';
 import { PartsPanel } from './PartsPanel';
-import { SandboxPanel, defaultSetup, setupToAnalyses, type SandboxSetup } from './SandboxPanel';
+import { SandboxPanel, defaultSetup, setupToAnalyses, setupToSweep, type SandboxSetup } from './SandboxPanel';
 import { SuccessModal } from './SuccessModal';
 import { StatusBar, Toolbar } from './Toolbar';
 
@@ -49,11 +49,11 @@ export function Workbench({ level, onExit, onGoto }: { level: Level | null; onEx
     const analyses = level ? level.analyses : setupToAnalyses(setup);
     if (!analyses.length) return;
     lastRun.current = ed.version;
-    await session.start({ sch: ed.sch, version: ed.version, level, analyses, corner: level?.corner ?? setup.corner });
+    await session.start({ sch: ed.sch, version: ed.version, level, analyses, corner: level?.corner ?? setup.corner, sweep: level ? undefined : setupToSweep(setup) });
     const s = useSession.getState();
     if (!level && s.status === 'done' && !s.probes.length) {
       // sandbox: probe every labelled net by default
-      const kind = analyses.find((a) => a.kind !== 'op')?.kind;
+      const kind = analyses.find((a) => a.kind !== 'op' && a.kind !== 'noise')?.kind;
       if (kind) for (const l of ed.sch.labels) s.addProbe({ analysis: kind, node: l.name.toLowerCase(), show: kind === 'ac' ? 'db' : 'v' });
     }
     if (level && s.score && s.score.stars > 0) {
@@ -75,7 +75,7 @@ export function Workbench({ level, onExit, onGoto }: { level: Level | null; onEx
     <div className="workbench">
       <div className="wb-top">
         <button className="link" onClick={onExit}>← {t('wb.back')}</button>
-        <Toolbar onRun={run} running={session.status === 'running'} />
+        <Toolbar onRun={run} running={session.status === 'running'} progress={session.progress} />
         <button className="link" onClick={restart}>{t('wb.restart')}</button>
       </div>
       <div className="wb-main">

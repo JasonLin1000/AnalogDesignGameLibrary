@@ -30,7 +30,15 @@ export type Measure =
   | { kind: 'tran_cross'; node: string; level: number; edge?: 'rise' | 'fall' }
   | { kind: 'dc_v'; node: string; at: number }
   | { kind: 'part_count'; partKind?: PartKind }
-  | { kind: 'param_sum'; partKind: PartKind; key: string };
+  | { kind: 'param_sum'; partKind: PartKind; key: string }
+  // ---- phase 2 ----
+  | { kind: 'ac_diff_gain_db'; pos: string; neg: string; freq: number }
+  | { kind: 'noise_in'; freq: number }              // input-referred noise density, V/√Hz
+  | { kind: 'noise_out_total' }                     // integrated output noise, V rms
+  | { kind: 'tran_min'; node: string; from?: number; to?: number }
+  | { kind: 'tran_max'; node: string; from?: number; to?: number }
+  | { kind: 'tran_freq'; node: string; level: number; from?: number }
+  | { kind: 'dc_tempco'; node: string };            // box-method temperature coefficient, ppm/°C
 
 // ---------- helpers ----------
 export function plotFor(res: SimResult, kind: Analysis['kind']): Plot | null {
@@ -205,6 +213,57 @@ export function evaluate(m: Measure, res: SimResult): number {
       return res.circuit.parts
         .filter((p) => p.kind === m.partKind && res.playerParts.includes(p.name))
         .reduce((s, p) => s + parseSpice(p.params[m.key]), 0);
+    case 'ac_diff_gain_db': {
+      const p = need(plotFor(res, 'ac'), 'ac');
+      const a = p.byName.get(m.pos.toLowerCase()), b = p.byName.get(m.neg.toLowerCase());
+      if (!a) throw new MeasureError('noNode', { node: m.pos });
+      if (!b) throw new MeasureError('noNode', { node: m.neg });
+      const mag = Array.from(a.re, (re, i) => Math.hypot(re - b.re[i], (a.im?.[i] ?? 0) - (b.im?.[i] ?? 0)));
+      return interp(xVector(p), toDb(mag), m.freq, true);
+    }
+    case 'noise_in': {
+      const p = need(plotFor(res, 'noise'), 'noise');
+      const v = p.byName.get('inoise_spectrum');
+      if (!v) throw new MeasureError('noVector', { name: 'inoise_spectrum' });
+      return interp(xVector(p), v.re, m.freq, true);
+    }
+    case 'noise_out_total': {
+      const p = need(plotFor(res, 'noise'), 'noise');
+      const v = p.byName.get('onoise_total');
+      if (!v) throw new MeasureError('noVector', { name: 'onoise_total' });
+      return v.re[0];
+    }
+    case 'tran_min':
+    case 'tran_max': {
+      const p = need(plotFor(res, 'tran'), 'tran');
+      const t = xVector(p), y = nodeRe(p, m.node);
+      let best = m.kind === 'tran_min' ? Infinity : -Infinity;
+      for (let i = 0; i < t.length; i++) {
+        if ((m.from !== undefined && t[i] < m.from) || (m.to !== undefined && t[i] > m.to)) continue;
+        best = m.kind === 'tran_min' ? Math.min(best, y[i]) : Math.max(best, y[i]);
+      }
+      return Number.isFinite(best) ? best : NaN;
+    }
+    case 'tran_freq': {
+      const p = need(plotFor(res, 'tran'), 'tran');
+      const t = xVector(p), y = nodeRe(p, m.node);
+      const ups: number[] = [];
+      for (let i = 1; i < t.length; i++) {
+        if (m.from !== undefined && t[i] < m.from) continue;
+        if (y[i - 1] < m.level && y[i] >= m.level) ups.push(t[i - 1] + (t[i] - t[i - 1]) * (m.level - y[i - 1]) / (y[i] - y[i - 1]));
+      }
+      if (ups.length < 3) return 0; // not oscillating
+      const k = Math.min(ups.length - 1, 10);
+      return k / (ups[ups.length - 1] - ups[ups.length - 1 - k]);
+    }
+    case 'dc_tempco': {
+      const p = need(plotFor(res, 'dc'), 'dc');
+      const T = xVector(p), v = nodeRe(p, m.node);
+      let lo = Infinity, hi = -Infinity, sum = 0;
+      for (let i = 0; i < v.length; i++) { lo = Math.min(lo, v[i]); hi = Math.max(hi, v[i]); sum += v[i]; }
+      const mean = sum / v.length;
+      return ((hi - lo) / (Math.abs(mean) * Math.abs(T[T.length - 1] - T[0]))) * 1e6;
+    }
   }
 }
 

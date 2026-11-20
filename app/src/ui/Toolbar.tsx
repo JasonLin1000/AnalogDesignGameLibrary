@@ -12,7 +12,7 @@ function Btn({ label, keyHint, active, disabled, onClick, icon }: {
   );
 }
 
-export function Toolbar({ onRun, running }: { onRun: () => void; running: boolean }) {
+export function Toolbar({ onRun, running, progress }: { onRun: () => void; running: boolean; progress?: { done: number; total: number } }) {
   const { t } = useT();
   const ed = useEditor();
   const k = (key: MessageKey) => t(key);
@@ -34,7 +34,7 @@ export function Toolbar({ onRun, running }: { onRun: () => void; running: boolea
       <Btn icon="↷" label={k('tool.redo')} keyHint="Shift+U / Ctrl+Y" disabled={!ed.future.length} onClick={ed.redo} />
       <span className="tb-grow" />
       <button className="run" onClick={onRun} disabled={running} title={`${t('tool.run')} (Ctrl+Enter)`}>
-        {running ? t('run.running') : `▶ ${t('tool.run')}`}
+        {running ? (progress && progress.total > 1 ? t('run.progress', { done: progress.done, total: progress.total }) : t('run.running')) : `▶ ${t('tool.run')}`}
       </button>
     </div>
   );

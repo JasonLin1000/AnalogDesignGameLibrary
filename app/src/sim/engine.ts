@@ -22,8 +22,11 @@ async function modelFiles(corner: Corner, load: FileLoader): Promise<Record<stri
   const hit = cornerCache.get(corner);
   if (hit) return hit;
   manifest ??= JSON.parse(await load('manifest.json')) as string[];
-  const want = manifest.filter((p) =>
-    !p.startsWith('cells/') || p.includes(`__${corner}.`) || p.includes('__mismatch.'));
+  // keep corner-independent files plus the selected corner's ("__tt." in cells, "corners/tt/")
+  const want = manifest.filter((p) => {
+    const m = p.match(/(?:__|corners\/)(tt|ff|ss|sf|fs)[./]/);
+    return !m || m[1] === corner;
+  });
   const files: Record<string, string> = {};
   await Promise.all(want.map(async (p) => { files[`/work/sky130/${p}`] = await load(p); }));
   // ngspice resolves the includes of every .lib section, so keep only the selected corner
@@ -40,10 +43,16 @@ export async function runDeck(deck: Deck, corner: Corner, load: FileLoader): Pro
   const files: Record<string, string> = { '/work/.spiceinit': 'set ngbehavior=hsa\n' };
   if (deck.usesSky130) Object.assign(files, await modelFiles(corner, load));
   const r = await runNgspice(deck.text, { files, outputs: deck.outputs });
-  const plots = deck.outputs.map((f) => {
-    const txt = r.files[f];
-    if (!txt) return null;
-    return parseRaw(txt)[0] ?? null;
+  const plots = deck.plotFiles.map((files) => {
+    const parsed = files.map((f) => (r.files[f] ? parseRaw(r.files[f]!)[0] ?? null : null));
+    const main = parsed[0];
+    if (!main) return null;
+    // noise: fold the integrated totals (inoise_total, onoise_total) into the spectrum plot
+    for (const extra of parsed.slice(1)) {
+      if (!extra) return null;
+      for (const v of extra.vectors) if (!main.byName.has(v.name)) main.byName.set(v.name, v);
+    }
+    return main;
   });
   const log = [r.stdout, r.stderr].filter(Boolean).join('\n')
     .split('\n').filter((l) => !/proc\/meminfo|initialization file spinit/.test(l)).join('\n');

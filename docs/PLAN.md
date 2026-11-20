@@ -116,10 +116,18 @@
 |---|---|---|
 | **Phase 0 技術驗證** ✅ | ngspice→WASM、載入 sky130 tt 模型、瀏覽器跑 5T OTA AC 分析 | 瀏覽器中畫出 Bode 圖，結果與桌面版 ngspice 一致 |
 | Phase 1 MVP ✅ | 專案骨架（Vite + React + TS + i18n）、schematic 編輯器、netlister、波形檢視器、關卡框架；第 0–3 章 | 可從頭玩到第 3 章 |
-| Phase 2 | STB、noise、corner、MC；第 4–6 章 | Bandgap / LDO 關卡可玩 |
+| Phase 2 ✅ | noise、溫度掃描、PVT corner、Monte Carlo；第 4–6 章 | Bandgap / LDO 關卡可玩 |
 | Phase 3 | Layout 編輯器、PCell、DRC、LVS；第 7 章 | 畫出 MOS 並通過 LVS |
 | Phase 4 | PEX、LDE、熱圖、post-sim；第 8–10 章 | pre/post 差異可被觀察與修正 |
 | Phase 5 | 美術、音效、NPC、排行榜、關卡編輯器、Tauri 桌面版 | 公開 release |
+
+## 7.1 Phase 2 實作備註
+
+- **Monte Carlo**：SKY130 原始模型的 mismatch 是 Spectre 語法，ngspice 不會自動抽樣。遊戲改用 Pelgrom 模型自行抽樣：每顆 MOS 閘極串一個 ΔVth 電壓源，σ = AVT / √(W·L)，AVT 取自模型的 vth0_slope（NFET 3.36、PFET 5.86 mV·µm）。抽樣用固定 seed，可重現、可測試；之後 layout 的製程梯度也走同一機制。
+- **迴路增益 / STB**：沒有獨立的 STB 分析，改用測試台上的 1 TH 電感 + 1 F 電容「DC 閉迴路、AC 開迴路」技巧量測開迴路增益與相位邊限。
+- **LDO 關卡**：理想運放加上 1 MΩ 輸出電阻（真實誤差放大器的特性），學習重點是 A0（直流精度）、GBW（暫態速度）與傳輸管大小（閘極電容 vs. 壓降）的三角取捨；corner 掃描會揪出 sf −40 °C 的壓降問題。
+- **SKY130 尺寸限制**：L 0.15–100 µm、每指寬 W/nf < 100 µm，模擬前會檢查並提示使用 nf。
+- **教師模式**：首頁開啟「解鎖全部關卡」後，關卡說明面板可載入參考解答（自動擺放並以網路標籤連接）。
 
 ## 8. 開發環境需求
 

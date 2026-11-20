@@ -5,7 +5,7 @@ import { PartIcon } from '../schematic/PartSymbol';
 import { makePlaceTool, useEditor } from '../schematic/store';
 import type { PartKind } from '../schematic/types';
 
-const SANDBOX: PartKind[] = ['R', 'C', 'L', 'V', 'I', 'D', 'LED', 'NMOS', 'PMOS', 'NFET', 'PFET'];
+const SANDBOX: PartKind[] = ['R', 'C', 'L', 'V', 'I', 'D', 'LED', 'NMOS', 'PMOS', 'NFET', 'PFET', 'PNP', 'OPAMP'];
 
 export function PartsPanel() {
   const { t, L } = useT();

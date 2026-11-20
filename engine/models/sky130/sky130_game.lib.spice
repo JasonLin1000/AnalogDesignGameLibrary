@@ -1,50 +1,56 @@
 * Trimmed SKY130 model library for AnalogDesignGame
 * Devices: nfet_01v8 pfet_01v8   Corners: tt ff ss sf fs
 * Derived from SkyWater sky130_fd_pr (Apache-2.0), see LICENSE / SOURCE.txt
-* Set mc_mm_switch=1 to enable device mismatch (Monte Carlo).
+* Device mismatch is applied by the game itself (Pelgrom dVth per instance),
+* using the vth0_slope (AVT) values from the *__mismatch.corner.spice files.
 
 .lib tt
-.param mc_mm_switch=0 mc_pr_switch=0
 .include "common.spice"
+.include "corners/tt/nonfet.spice"
 .include "cells/nfet_01v8/sky130_fd_pr__nfet_01v8__tt.corner.spice"
 .include "cells/nfet_01v8/sky130_fd_pr__nfet_01v8__mismatch.corner.spice"
 .include "cells/pfet_01v8/sky130_fd_pr__pfet_01v8__tt.corner.spice"
 .include "cells/pfet_01v8/sky130_fd_pr__pfet_01v8__mismatch.corner.spice"
+.include "cells/pnp_05v5/sky130_fd_pr__pnp_05v5_W0p68L0p68.model.spice"
 .endl
 
 .lib ff
-.param mc_mm_switch=0 mc_pr_switch=0
 .include "common.spice"
+.include "corners/ff/nonfet.spice"
 .include "cells/nfet_01v8/sky130_fd_pr__nfet_01v8__ff.corner.spice"
 .include "cells/nfet_01v8/sky130_fd_pr__nfet_01v8__mismatch.corner.spice"
 .include "cells/pfet_01v8/sky130_fd_pr__pfet_01v8__ff.corner.spice"
 .include "cells/pfet_01v8/sky130_fd_pr__pfet_01v8__mismatch.corner.spice"
+.include "cells/pnp_05v5/sky130_fd_pr__pnp_05v5_W0p68L0p68.model.spice"
 .endl
 
 .lib ss
-.param mc_mm_switch=0 mc_pr_switch=0
 .include "common.spice"
+.include "corners/ss/nonfet.spice"
 .include "cells/nfet_01v8/sky130_fd_pr__nfet_01v8__ss.corner.spice"
 .include "cells/nfet_01v8/sky130_fd_pr__nfet_01v8__mismatch.corner.spice"
 .include "cells/pfet_01v8/sky130_fd_pr__pfet_01v8__ss.corner.spice"
 .include "cells/pfet_01v8/sky130_fd_pr__pfet_01v8__mismatch.corner.spice"
+.include "cells/pnp_05v5/sky130_fd_pr__pnp_05v5_W0p68L0p68.model.spice"
 .endl
 
 .lib sf
-.param mc_mm_switch=0 mc_pr_switch=0
 .include "common.spice"
+.include "corners/sf/nonfet.spice"
 .include "cells/nfet_01v8/sky130_fd_pr__nfet_01v8__sf.corner.spice"
 .include "cells/nfet_01v8/sky130_fd_pr__nfet_01v8__mismatch.corner.spice"
 .include "cells/pfet_01v8/sky130_fd_pr__pfet_01v8__sf.corner.spice"
 .include "cells/pfet_01v8/sky130_fd_pr__pfet_01v8__mismatch.corner.spice"
+.include "cells/pnp_05v5/sky130_fd_pr__pnp_05v5_W0p68L0p68.model.spice"
 .endl
 
 .lib fs
-.param mc_mm_switch=0 mc_pr_switch=0
 .include "common.spice"
+.include "corners/fs/nonfet.spice"
 .include "cells/nfet_01v8/sky130_fd_pr__nfet_01v8__fs.corner.spice"
 .include "cells/nfet_01v8/sky130_fd_pr__nfet_01v8__mismatch.corner.spice"
 .include "cells/pfet_01v8/sky130_fd_pr__pfet_01v8__fs.corner.spice"
 .include "cells/pfet_01v8/sky130_fd_pr__pfet_01v8__mismatch.corner.spice"
+.include "cells/pnp_05v5/sky130_fd_pr__pnp_05v5_W0p68L0p68.model.spice"
 .endl
 

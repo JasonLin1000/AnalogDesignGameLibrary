@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useProgress } from '../game/progress';
+import { circuitToSchematic } from '../levels/autoplace';
 import { useSession } from '../game/session';
 import { useT, type MessageKey } from '../i18n';
 import { maxStars, type SpecResult } from '../levels/evaluate';
@@ -27,11 +29,12 @@ function SpecRow({ spec, r, stale }: { spec: Spec; r?: SpecResult; stale: boolea
   return (
     <li className={`spec ${state}`}>
       <span className="spec-icon" aria-hidden="true">{state === 'pass' ? '✓' : state === 'fail' ? '✗' : '○'}</span>
-      <span className="spec-label">{L(spec.label)}</span>
+      <span className="spec-label">{L(spec.label)}{spec.over === 'pvt' && <span className="tag">PVT</span>}{spec.over === 'mc' && <span className="tag">{spec.stat === 'abs3sigma' ? 'MC |μ|+3σ' : 'MC'}</span>}</span>
       <span className="spec-target">{fmtTarget(spec)}</span>
       {r && !stale && (
         <span className="spec-value">
           {r.error ? t(`merr.${r.error.code}` as MessageKey, r.error.vars) : fmtValue(r.value, spec.unit)}
+          {r.worstLabel && r.values && r.values.length > 1 && <span className="worst"> {t('spec.worstAt', { label: r.worstLabel })}</span>}
         </span>
       )}
       <span className="sr-only">{state === 'pass' ? t('spec.pass') : state === 'fail' ? t('spec.fail') : t('spec.pending')}</span>
@@ -93,7 +96,28 @@ export function BriefPanel({ level, best }: { level: Level; best: number }) {
           💡 {t('brief.showHint', { n: hintsShown + 1, total: level.hints.length })}
         </button>
       )}
+      <TeacherTools level={level} />
     </aside>
+  );
+}
+
+/** Teacher mode: load any reference solution onto the canvas (auto-placed, connected by labels). */
+function TeacherTools({ level }: { level: Level }) {
+  const { t } = useT();
+  const unlockAll = useProgress((p) => p.unlockAll);
+  const ed = useEditor();
+  if (!unlockAll) return null;
+  const sols = [...level.solutions].sort((a, b) => b.stars - a.stars);
+  return (
+    <details className="teacher">
+      <summary>{t('teacher.title')}</summary>
+      <p className="note">{t('teacher.help')}</p>
+      {sols.map((s, i) => (
+        <button key={i} onClick={() => ed.commit((doc) => { Object.assign(doc, circuitToSchematic(s.circuit, level.start)); })}>
+          {t('teacher.load', { stars: '★'.repeat(s.stars) || '0★' })}
+        </button>
+      ))}
+    </details>
   );
 }
 

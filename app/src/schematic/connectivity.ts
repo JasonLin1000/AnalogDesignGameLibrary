@@ -5,6 +5,7 @@
 //  - coincident points join
 import { PARTS, isMos, pinPositions } from './parts';
 import type { Circuit, LogicalPart, Pt, Schematic } from './types';
+import { parseSpice } from './units';
 
 export const key = (p: Pt) => `${p.x},${p.y}`;
 
@@ -119,7 +120,8 @@ export function analyze(sch: Schematic): Connectivity {
       rec[p.name] = netOfPoint.get(key(p.pt))!;
       if ((degree.get(key(p.pt)) ?? 0) <= 1 && !sch.labels.some((l) => l.x === p.pt.x && l.y === p.pt.y)) {
         // allow an unconnected MOS body: the netlister ties it to the source
-        if (!(isMos(part.kind) && p.name === 'b')) danglingPins.push(p.pt);
+        // an unconnected MOS body is tied to the source by the netlister; a spare ground symbol is harmless
+        if (!(isMos(part.kind) && p.name === 'b') && part.kind !== 'GND') danglingPins.push(p.pt);
       }
     }
     pinNets.set(part.id, rec);
@@ -180,6 +182,15 @@ export function checkCircuit(c: Circuit): Diagnostic[] {
       if (seen.has(n) && !(isMos(p.kind))) continue;
       seen.add(n);
       count.set(n, (count.get(n) ?? 0) + 1);
+    }
+  }
+  // SKY130 model bins: L in [0.15, 100) µm, width per finger (W/nf) in [0.36, 100) µm
+  for (const p of c.parts) {
+    if (p.kind !== 'NFET' && p.kind !== 'PFET') continue;
+    const w = parseSpice(p.params.w), l = parseSpice(p.params.l), nf = Math.max(1, Math.round(parseSpice(p.params.nf || '1')) || 1);
+    const wf = w / nf;
+    if (!(l >= 0.15e-6 - 1e-12 && l < 100e-6) || !(wf >= 0.36e-6 - 1e-12 && wf < 100e-6)) {
+      d.push({ level: 'error', code: 'mosRange', vars: { name: p.name, wf: (wf * 1e6).toPrecision(3), l: (l * 1e6).toPrecision(3) } });
     }
   }
   if (!count.has('0')) d.push({ level: 'error', code: 'noGround' });

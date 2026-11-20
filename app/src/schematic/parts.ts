@@ -1,6 +1,7 @@
 // Part library: pins, parameters, symbol geometry (grid units) and SPICE generation.
 import type { Localized } from '../i18n';
 import type { LogicalPart, Part, PartKind, Pt, Rot } from './types';
+import { parseSpice } from './units';
 
 export interface ParamDef {
   key: string;
@@ -231,7 +232,63 @@ export const PARTS: Record<PartKind, PartDef> = {
     }),
     opVectors: (p) => mosOp(`m.${lc(spiceName(PARTS.PFET, p.name))}.msky130_fd_pr__pfet_01v8`),
   },
+  PNP: {
+    kind: 'PNP', prefix: 'Q', spicePrefix: 'X', title: L('PNP（SKY130 垂直型）', 'PNP (SKY130 vertical)'),
+    pins: [{ name: 'e', x: 2, y: -3 }, { name: 'b', x: -3, y: 0 }, { name: 'c', x: 2, y: 3 }],
+    params: [{ key: 'm', label: L('並聯數 m', 'Multiplier m'), default: '1' }],
+    symbol: {
+      paths: ['M-3,0 H-0.5 M-0.5,-1.5 V1.5', 'M-0.5,-0.6 L2,-2 V-3', 'M-0.5,0.6 L2,2 V3', 'M0.25,-1.45 L0.35,-0.55 L1.15,-0.95'],
+      circles: [{ cx: 0.4, cy: 0, r: 2.3 }],
+      extent: [-3, -3, 2.7, 3],
+    },
+    valueText: (p) => (p.m && p.m !== '1' ? `m=${p.m}` : ''),
+    spice: (p) => ({
+      // the vertical PNP's collector is the substrate; tie the 4th (substrate) pin to the collector
+      lines: [`${spiceName(PARTS.PNP, p.name)} ${p.nets.c} ${p.nets.b} ${p.nets.e} ${p.nets.c} sky130_fd_pr__pnp_05v5_W0p68L0p68 m=${p.params.m || 1}`],
+      sky130: true,
+    }),
+    opVectors: (p) => ({ i: `@q.${lc(spiceName(PARTS.PNP, p.name))}.qsky130_fd_pr__pnp_05v5_w0p68l0p68[ic]` }),
+  },
+  OPAMP: {
+    kind: 'OPAMP', prefix: 'U', spicePrefix: '', title: L('理想運放', 'Ideal op-amp'),
+    pins: [{ name: 'inp', x: -4, y: -2 }, { name: 'inn', x: -4, y: 2 }, { name: 'out', x: 4, y: 0 }],
+    params: [
+      { key: 'a0', label: L('直流增益 A0', 'DC gain A0'), default: '10k' },
+      { key: 'gbw', label: L('增益頻寬積 GBW', 'Gain-bandwidth GBW'), default: '10meg', unit: 'Hz' },
+      { key: 'vmin', label: L('輸出下限', 'Output min'), default: '0', unit: 'V' },
+      { key: 'vmax', label: L('輸出上限', 'Output max'), default: '1.8', unit: 'V' },
+      { key: 'rout', label: L('輸出電阻', 'Output resistance'), default: '0', unit: 'Ω' },
+    ],
+    symbol: {
+      paths: ['M-3,-3.2 L-3,3.2 L3.2,0 Z', 'M-4,-2 H-3 M-4,2 H-3 M3.2,0 H4', 'M-2.5,-2 H-1.7 M-2.1,-2.4 V-1.6', 'M-2.5,2 H-1.7'],
+      extent: [-4, -3.2, 4, 3.2],
+    },
+    valueText: (p) => `A0=${p.a0} GBW=${p.gbw}`,
+    spice: (p) => {
+      // single-pole amplifier: transconductor into R||C, then a rail-clamped ideal buffer
+      const n = p.name, x = `${n.toLowerCase()}_x`;
+      const a0 = parseSpiceNum(p.params.a0, 1e4), gbw = parseSpiceNum(p.params.gbw, 1e7);
+      const c = 1 / (2 * Math.PI * 1e3 * (gbw / a0));
+      const rout = parseSpice(p.params.rout);
+      // optional output resistance (a real error amplifier is not a stiff voltage source)
+      const o = rout > 0 ? `${n.toLowerCase()}_o` : p.nets.out;
+      return {
+        lines: [
+          `G${n}a 0 ${x} ${p.nets.inp} ${p.nets.inn} ${(a0 / 1e3).toExponential(6)}`,
+          `R${n}a ${x} 0 1k`,
+          `C${n}a ${x} 0 ${c.toExponential(6)}`,
+          `B${n}o ${o} 0 V = min(max(v(${x}), ${p.params.vmin || 0}), ${p.params.vmax || 1.8})`,
+          ...(rout > 0 ? [`R${n}o ${o} ${p.nets.out} ${p.params.rout}`] : []),
+        ],
+      };
+    },
+  },
 };
+
+function parseSpiceNum(s: string | undefined, fallback: number): number {
+  const v = parseSpice(s);
+  return Number.isFinite(v) && v > 0 ? v : fallback;
+}
 
 export const isMos = (k: PartKind) => k === 'NMOS' || k === 'PMOS' || k === 'NFET' || k === 'PFET';
 export const isPChannel = (k: PartKind) => k === 'PMOS' || k === 'PFET';

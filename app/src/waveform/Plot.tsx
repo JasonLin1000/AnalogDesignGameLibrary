@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { formatEng } from '../schematic/units';
 
-export interface Series { name: string; y: ArrayLike<number>; color: string }
+export interface Series { name: string; y: ArrayLike<number>; color: string; faint?: boolean }
 
 export const TRACE_COLORS = ['var(--tr1)', 'var(--tr2)', 'var(--tr3)', 'var(--tr4)', 'var(--tr5)', 'var(--tr6)'];
 
@@ -13,9 +13,12 @@ function niceStep(range: number, target: number) {
   return (n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10) * mag;
 }
 
-export function Plot({ x, logX, series, xUnit, yUnit, height = 220 }: {
-  x: ArrayLike<number>; logX?: boolean; series: Series[]; xUnit: string; yUnit: string; height?: number;
+export function Plot({ x, logX, logY, series: rawSeries, xUnit, yUnit, height = 220 }: {
+  x: ArrayLike<number>; logX?: boolean; logY?: boolean; series: Series[]; xUnit: string; yUnit: string; height?: number;
 }) {
+  // log-Y: plot log10 of the values, label ticks as powers of ten
+  const series = logY ? rawSeries.map((s) => ({ ...s, y: Array.from(s.y, (v) => (v > 0 ? Math.log10(v) : NaN)) })) : rawSeries;
+  const yText = (v: number) => (logY ? formatEng(10 ** v, yUnit, 3) : formatEng(v, '', 3));
   const ref = useRef<HTMLCanvasElement>(null);
   const wrap = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<number | null>(null); // x pixel
@@ -71,21 +74,22 @@ export function Plot({ x, logX, series, xUnit, yUnit, height = 220 }: {
       }
     }
     g.textAlign = 'right'; g.textBaseline = 'middle';
-    const sy = niceStep(y1 - y0, 5);
+    const sy = logY ? Math.max(1, Math.round(niceStep(y1 - y0, 5))) : niceStep(y1 - y0, 5);
     // enough significant digits to tell neighbouring ticks apart
     const yDigits = Math.min(8, Math.max(3, Math.ceil(Math.log10(Math.max(Math.abs(y0), Math.abs(y1)) / sy)) + 1));
     for (let v = Math.ceil(y0 / sy) * sy; v <= y1; v += sy) {
       const Y = py(v);
       g.beginPath(); g.moveTo(L, Y); g.lineTo(width - R, Y); g.stroke();
-      g.fillText(formatEng(Math.abs(v) < sy * 1e-6 ? 0 : v, '', yDigits), L - 6, Y);
+      g.fillText(logY ? yText(v) : formatEng(Math.abs(v) < sy * 1e-6 ? 0 : v, '', yDigits), L - 6, Y);
     }
     g.strokeStyle = col('--line'); g.strokeRect(L, T, width - L - R, height - T - B);
     g.save(); g.translate(12, (T + height - B) / 2); g.rotate(-Math.PI / 2); g.textAlign = 'center'; g.fillText(yUnit, 0, 0); g.restore();
     g.textAlign = 'right'; g.textBaseline = 'bottom'; g.fillText(xUnit, width - R, height - 1);
     // traces
     g.save(); g.beginPath(); g.rect(L, T, width - L - R, height - T - B); g.clip();
-    g.lineWidth = 2;
-    for (const s of series) {
+    for (const s of [...series.filter((q) => q.faint), ...series.filter((q) => !q.faint)]) {
+      g.lineWidth = s.faint ? 1 : 2;
+      g.globalAlpha = s.faint ? 0.35 : 1;
       g.strokeStyle = s.color.startsWith('var(') ? col(s.color.slice(4, -1)) : s.color;
       g.beginPath();
       let started = false;
@@ -97,6 +101,7 @@ export function Plot({ x, logX, series, xUnit, yUnit, height = 220 }: {
       }
       g.stroke();
     }
+    g.globalAlpha = 1;
     g.restore();
     // hover readout
     if (hover !== null && n) {
@@ -107,16 +112,18 @@ export function Plot({ x, logX, series, xUnit, yUnit, height = 220 }: {
       const X = px(xv(i));
       g.strokeStyle = col('--muted'); g.setLineDash([3, 3]); g.lineWidth = 1;
       g.beginPath(); g.moveTo(X, T); g.lineTo(X, height - B); g.stroke(); g.setLineDash([]);
-      const lines = [`${formatEng(x[i], xUnit, 4)}`, ...series.map((s) => `${s.name}: ${formatEng(s.y[i], yUnit === 'dB' || yUnit === '°' ? '' : yUnit, 4)}${yUnit === 'dB' ? ' dB' : yUnit === '°' ? '°' : ''}`)];
+      const bold = series.filter((q) => !q.faint);
+      const val = (v: number) => (logY ? formatEng(10 ** v, yUnit, 4) : `${formatEng(v, yUnit === 'dB' || yUnit === '°' ? '' : yUnit, 4)}${yUnit === 'dB' ? ' dB' : yUnit === '°' ? '°' : ''}`);
+      const lines = [`${formatEng(x[i], xUnit, 4)}`, ...bold.map((s) => `${s.name}: ${val(s.y[i])}`)];
       const w = Math.max(...lines.map((l) => g.measureText(l).width)) + 14;
       const bx = X + w + 12 > width ? X - w - 8 : X + 8;
       g.fillStyle = col('--panel'); g.strokeStyle = col('--line');
       g.fillRect(bx, T + 4, w, lines.length * 15 + 8); g.strokeRect(bx, T + 4, w, lines.length * 15 + 8);
       g.textAlign = 'left'; g.textBaseline = 'top';
       lines.forEach((l, k) => {
-        g.fillStyle = k === 0 ? col('--muted') : (series[k - 1].color.startsWith('var(') ? col(series[k - 1].color.slice(4, -1)) : series[k - 1].color);
+        g.fillStyle = k === 0 ? col('--muted') : (bold[k - 1].color.startsWith('var(') ? col(bold[k - 1].color.slice(4, -1)) : bold[k - 1].color);
         g.fillText(l, bx + 7, T + 9 + k * 15);
-        if (k > 0) { g.beginPath(); g.arc(X, py(series[k - 1].y[i]), 3, 0, 7); g.fill(); }
+        if (k > 0) { g.beginPath(); g.arc(X, py(bold[k - 1].y[i]), 3, 0, 7); g.fill(); }
       });
     }
   });
@@ -130,7 +137,7 @@ export function Plot({ x, logX, series, xUnit, yUnit, height = 220 }: {
         onMouseLeave={() => setHover(null)}
       />
       <div className="legend">
-        {series.map((s) => <span key={s.name}><i style={{ background: s.color }} />{s.name}</span>)}
+        {series.filter((q) => !q.faint).map((s) => <span key={s.name}><i style={{ background: s.color }} />{s.name}</span>)}
       </div>
     </div>
   );

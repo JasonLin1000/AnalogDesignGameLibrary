@@ -3,7 +3,7 @@ export interface Pt { x: number; y: number }
 /** NMOS/PMOS = teaching Level-1 model; NFET/PFET = SKY130 1.8V devices. */
 export type PartKind =
   | 'R' | 'C' | 'L' | 'V' | 'I' | 'GND' | 'D' | 'LED'
-  | 'NMOS' | 'PMOS' | 'NFET' | 'PFET';
+  | 'NMOS' | 'PMOS' | 'NFET' | 'PFET' | 'PNP' | 'OPAMP';
 
 export type Rot = 0 | 1 | 2 | 3;
 
@@ -38,7 +38,9 @@ export type Analysis =
   | { kind: 'op' }
   | { kind: 'dc'; source: string; start: string; stop: string; step: string }
   | { kind: 'ac'; fstart: string; fstop: string; ppd: number }
-  | { kind: 'tran'; tstep: string; tstop: string };
+  | { kind: 'tran'; tstep: string; tstop: string }
+  /** Small-signal noise: output node, input source (for input-referred noise). */
+  | { kind: 'noise'; out: string; src: string; fstart: string; fstop: string; ppd: number };
 
 export type Corner = 'tt' | 'ff' | 'ss' | 'sf' | 'fs';
 

@@ -1,4 +1,4 @@
-# App — Phase 1（電路圖編輯器 + 關卡）
+# App — 電路圖編輯器、模擬與關卡（第 0–6 章）
 
 Vite + React + TypeScript。模擬在 Web Worker 中以 ngspice-WASM 執行（見 [../engine](../engine/README.md)）。
 
@@ -17,7 +17,9 @@ npm run build      # 型別檢查 + 正式版建置到 dist/
 |---|---|
 | `src/schematic/` | 元件庫（`parts.ts`）、連線判斷（`connectivity.ts`）、netlist 產生（`netlist.ts`）、編輯器狀態（`store.ts`）、畫布（`SchematicCanvas.tsx`） |
 | `src/sim/` | 模擬核心（`engine.ts`，Worker 與測試共用）、ASCII raw 解析（`raw.ts`）、量測函式（`measure.ts`）、Worker |
-| `src/levels/` | 關卡型別、評分（`evaluate.ts`）、第 0–3 章關卡（`ch0.ts`…`ch3.ts`） |
+| `src/levels/` | 關卡型別、評分（`evaluate.ts`，含 PVT / MC 統計）、第 0–6 章關卡（`ch0.ts`…`ch6.ts`）、參考解答自動擺放（`autoplace.ts`） |
+| `src/game/runs.ts` | 規劃與執行多次模擬：標稱、PVT corner × 溫度、Monte Carlo（Worker pool 平行執行） |
+| `src/sim/mismatch.ts` | Pelgrom ΔVth 抽樣（可重現的亂數） |
 | `src/game/` | 進度（星星、解鎖）、模擬流程 |
 | `src/waveform/` | 波形圖 |
 | `src/ui/` | 首頁、工作台、說明面板、對話框 |
@@ -26,7 +28,7 @@ npm run build      # 型別檢查 + 正式版建置到 dist/
 ## 新增關卡
 
 1. 在 `src/levels/chN.ts` 用 `P()`（元件）、`W()`（線）、`Lb()`（標籤）描述起始電路。
-2. `specs` 決定 ★，`stars` 決定 ★★、★★★；量測種類見 `src/sim/measure.ts` 的 `Measure`。
+2. `specs` 決定 ★，`stars` 決定 ★★、★★★；量測種類見 `src/sim/measure.ts` 的 `Measure`。規格可加 `over: 'pvt' | 'mc'` 與 `stat`（worst / mean / abs3sigma），關卡用 `sweep` 指定 corner、溫度與 Monte Carlo 次數。
 3. **至少附一個 `solutions`**，並標明它應該拿幾顆星；`npm test` 會用真的 ngspice 驗證。
 4. 所有文字都要有 `zh-TW` 與 `en`（用 `L('中文', 'English')`）。
 

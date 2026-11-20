@@ -110,7 +110,7 @@ export function SchematicCanvas({ onRun }: { onRun: () => void }) {
 
   const addProbe = (net: string) => {
     const res = session.result;
-    const kinds = res ? res.analyses.map((a) => a.kind).filter((k) => k !== 'op') : [];
+    const kinds = res ? res.analyses.map((a) => a.kind).filter((k) => k !== 'op' && k !== 'noise') : [];
     const analysis = kinds[0];
     if (!analysis) return;
     session.addProbe({ analysis, node: net, show: analysis === 'ac' ? 'db' : 'v' });

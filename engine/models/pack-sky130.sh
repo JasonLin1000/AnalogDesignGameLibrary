@@ -21,6 +21,15 @@ for d in $DEVICES; do
   cp "$PDK/cells/$d/sky130_fd_pr__${d}__mismatch.corner.spice" "$OUT/cells/$d/"
 done
 
+# Vertical PNP (bandgap) + the per-corner non-FET parameters it needs (dkispp, dkbfpp ...)
+PNP=sky130_fd_pr__pnp_05v5_W0p68L0p68
+mkdir -p "$OUT/cells/pnp_05v5"
+cp "$PDK/cells/pnp_05v5/$PNP.model.spice" "$OUT/cells/pnp_05v5/"
+for c in $CORNERS; do
+  mkdir -p "$OUT/corners/$c"
+  cp "$PDK/models/corners/$c/nonfet.spice" "$OUT/corners/$c/"
+done
+
 # Shared parameters: LOD (length-of-diffusion) params + dlc_rotweak block from all.spice
 mkdir -p "$OUT/parameters"
 cp "$PDK/models/parameters/lod.spice" "$OUT/parameters/"
@@ -35,16 +44,18 @@ LIB="$OUT/sky130_game.lib.spice"
   echo "* Trimmed SKY130 model library for AnalogDesignGame"
   echo "* Devices: $DEVICES   Corners: $CORNERS"
   echo "* Derived from SkyWater sky130_fd_pr (Apache-2.0), see LICENSE / SOURCE.txt"
-  echo "* Set mc_mm_switch=1 to enable device mismatch (Monte Carlo)."
+  echo "* Device mismatch is applied by the game itself (Pelgrom dVth per instance),"
+  echo "* using the vth0_slope (AVT) values from the *__mismatch.corner.spice files."
   echo
   for c in $CORNERS; do
     echo ".lib $c"
-    echo ".param mc_mm_switch=0 mc_pr_switch=0"
     echo ".include \"common.spice\""
+    echo ".include \"corners/$c/nonfet.spice\""
     for d in $DEVICES; do
       echo ".include \"cells/$d/sky130_fd_pr__${d}__${c}.corner.spice\""
       echo ".include \"cells/$d/sky130_fd_pr__${d}__mismatch.corner.spice\""
     done
+    echo ".include \"cells/pnp_05v5/$PNP.model.spice\""
     echo ".endl"
     echo
   done
