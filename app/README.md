@@ -1,0 +1,37 @@
+# App — Phase 1（電路圖編輯器 + 關卡）
+
+Vite + React + TypeScript。模擬在 Web Worker 中以 ngspice-WASM 執行（見 [../engine](../engine/README.md)）。
+
+## 指令
+
+```bash
+npm install
+npm run dev        # http://localhost:5174 （會先把 ../engine/models/sky130 複製到 public/）
+npm test           # vitest：連線判斷、模擬引擎、每一關的參考解答（真的跑 ngspice）
+npm run build      # 型別檢查 + 正式版建置到 dist/
+```
+
+## 架構
+
+| 路徑 | 說明 |
+|---|---|
+| `src/schematic/` | 元件庫（`parts.ts`）、連線判斷（`connectivity.ts`）、netlist 產生（`netlist.ts`）、編輯器狀態（`store.ts`）、畫布（`SchematicCanvas.tsx`） |
+| `src/sim/` | 模擬核心（`engine.ts`，Worker 與測試共用）、ASCII raw 解析（`raw.ts`）、量測函式（`measure.ts`）、Worker |
+| `src/levels/` | 關卡型別、評分（`evaluate.ts`）、第 0–3 章關卡（`ch0.ts`…`ch3.ts`） |
+| `src/game/` | 進度（星星、解鎖）、模擬流程 |
+| `src/waveform/` | 波形圖 |
+| `src/ui/` | 首頁、工作台、說明面板、對話框 |
+| `src/i18n/` | 繁中 / 英文字典 |
+
+## 新增關卡
+
+1. 在 `src/levels/chN.ts` 用 `P()`（元件）、`W()`（線）、`Lb()`（標籤）描述起始電路。
+2. `specs` 決定 ★，`stars` 決定 ★★、★★★；量測種類見 `src/sim/measure.ts` 的 `Measure`。
+3. **至少附一個 `solutions`**，並標明它應該拿幾顆星；`npm test` 會用真的 ngspice 驗證。
+4. 所有文字都要有 `zh-TW` 與 `en`（用 `L('中文', 'English')`）。
+
+關卡以 TypeScript 物件撰寫（結構與 docs/PLAN.md 的 JSON 格式相同），享有型別檢查；之後的社群關卡編輯器可輸出同樣結構的 JSON。
+
+## 操作（參考 Virtuoso / LTspice）
+
+W 拉線 · L 標籤 · R 旋轉 · E 鏡像 · Q 屬性 · P 探針 · Del 刪除 · U / Ctrl+Z 復原 · F 全圖 · 滾輪縮放 · 中鍵或 Alt+拖曳平移 · Ctrl+Enter 模擬

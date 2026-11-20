@@ -114,8 +114,8 @@
 
 | 階段 | 內容 | 驗收標準 |
 |---|---|---|
-| **Phase 0 技術驗證** | ngspice→WASM、載入 sky130 tt 模型、瀏覽器跑 5T OTA AC 分析 | 瀏覽器中畫出 Bode 圖，結果與桌面版 ngspice 一致 |
-| Phase 1 MVP | 專案骨架（Vite + React + TS + i18n）、schematic 編輯器、netlister、波形檢視器、關卡框架；第 0–3 章 | 可從頭玩到第 3 章 |
+| **Phase 0 技術驗證** ✅ | ngspice→WASM、載入 sky130 tt 模型、瀏覽器跑 5T OTA AC 分析 | 瀏覽器中畫出 Bode 圖，結果與桌面版 ngspice 一致 |
+| Phase 1 MVP ✅ | 專案骨架（Vite + React + TS + i18n）、schematic 編輯器、netlister、波形檢視器、關卡框架；第 0–3 章 | 可從頭玩到第 3 章 |
 | Phase 2 | STB、noise、corner、MC；第 4–6 章 | Bandgap / LDO 關卡可玩 |
 | Phase 3 | Layout 編輯器、PCell、DRC、LVS；第 7 章 | 畫出 MOS 並通過 LVS |
 | Phase 4 | PEX、LDE、熱圖、post-sim；第 8–10 章 | pre/post 差異可被觀察與修正 |
