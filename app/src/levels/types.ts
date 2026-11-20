@@ -66,9 +66,17 @@ export interface Chapter {
 export interface LayoutSpec {
   id: string;
   label: Localized;
-  kind: 'drc' | 'lvs' | 'area' | 'pins';
-  max?: number;                        // area in µm²
+  kind: 'drc' | 'lvs' | 'area' | 'pins' | 'mismatch' | 'ldeAbs' | 'pinRegion' | 'post' | 'yield';
+  max?: number;                        // area µm², mismatch / ldeAbs mV, post measure upper bound
+  min?: number;                        // post / yield measure lower bound
+  unit?: string;
   layer?: import('../layout/types').LayerId; // pins: required pin layer
+  devices?: string[];                  // mismatch: [a, b]; ldeAbs: devices to check
+  pin?: string;                        // pinRegion: label text
+  region?: { x0?: number; x1?: number; y0?: number; y1?: number }; // pinRegion, µm
+  measure?: Measure;                   // post / yield
+  runs?: number;                       // yield: Monte Carlo runs
+  minYield?: number;                   // yield: required fraction of passing runs
 }
 
 export interface LayoutLevel {
@@ -88,6 +96,9 @@ export interface LayoutLevel {
   specs: LayoutSpec[];
   stars?: LayoutSpec[][];
   skipTest?: boolean;
+  /** Post-layout simulation test bench (sources, loads) connected to the pin labels by name. */
+  bench?: { parts: import('../schematic/types').LogicalPart[]; analyses: Analysis[] };
+  lde?: import('../layout/lde').LdeModel;
   solutions: { layout: import('../layout/types').Layout; stars: number }[];
 }
 

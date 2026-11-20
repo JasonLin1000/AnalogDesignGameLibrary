@@ -40,11 +40,11 @@ function metalPins(): Layout {
 }
 
 // ---------- 7-3: CMOS inverter ----------
-const inverterRef = C(
+export const inverterRef = C(
   X('NFET', 'MN', { w: '1u', l: '0.15u', nf: '1' }, { d: 'out', g: 'in', s: 'gnd', b: 'gnd' }),
   X('PFET', 'MP', { w: '2u', l: '0.15u', nf: '1' }, { d: 'out', g: 'in', s: 'vdd', b: 'vdd' }),
 );
-function inverter(gap = 2600): Layout {
+export function inverter(gap = 2600): Layout {
   const mn = inst('nmos', 'MN', 0, 0, 1000, 150);
   const mp = inst('pmos', 'MP', 0, gap, 2000, 150);
   const pt = inst('ptap', 'T1', -900, 300, 600, 400);

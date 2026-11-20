@@ -293,3 +293,18 @@ td.ok, span.ok { color: var(--ok); } td.bad, span.bad { color: var(--bad); }
 .static-sch { display: block; max-width: 640px; }
 .static-sch .part path, .static-sch .part circle { stroke: var(--sch-part); stroke-width: 1.6; fill: none; }
 .wb-main:has(.lsw) { grid-template-columns: 300px minmax(0, 1fr) 190px; }
+
+/* ---------- phase 4: LDE, post-sim, yield ---------- */
+.lde-tag { font: 700 11px var(--mono); fill: #ffe066; paint-order: stroke; stroke: #07090c; stroke-width: 3px; pointer-events: none; }
+.lde-pane, .post-pane { padding: 6px 12px 12px; }
+.lde-pane h4 { margin: 10px 0 4px; font-size: 13px; }
+.wafer { display: flex; gap: 20px; align-items: center; padding: 10px 16px; flex-wrap: wrap; }
+.wafer-disc { fill: #1d2430; stroke: #8a94a6; stroke-width: 0.06; }
+.wafer-flat { stroke: #8a94a6; stroke-width: 0.12; }
+.die { stroke: rgba(0,0,0,.4); stroke-width: 0.03; animation: diepop .35s both; }
+.die.good { fill: #22c55e; } .die.bad { fill: #ef4444; }
+@keyframes diepop { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .die { animation: none; } }
+.wafer-info { max-width: 320px; }
+.yield-big { font: 800 44px var(--mono); }
+.yield-big.ok { color: var(--ok); } .yield-big.bad { color: var(--bad); }

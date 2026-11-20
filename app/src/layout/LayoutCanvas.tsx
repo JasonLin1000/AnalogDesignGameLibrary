@@ -14,6 +14,8 @@ type Drag =
   | { mode: 'rect'; moved: boolean };
 
 export interface Highlight { boxes: Box[]; label?: string }
+/** LDE overlay: gradient direction (mV/µm) and ΔVth tags at gate centres (nm). */
+export interface Heat { gx: number; gy: number; tags: { x: number; y: number; text: string }[] }
 
 export function hitLayout(doc: Layout, p: { x: number; y: number }, tolNm: number, hidden: LayerId[]): string | null {
   for (const l of doc.labels) if (Math.abs(l.x - p.x) <= tolNm * 3 && Math.abs(l.y - p.y) <= tolNm * 3) return l.id;
@@ -29,8 +31,8 @@ export function hitLayout(doc: Layout, p: { x: number; y: number }, tolNm: numbe
   return null;
 }
 
-export function LayoutCanvas({ violations, focus, highlight, onNetPick, onFit }: {
-  violations: Violation[]; focus: number | null; highlight: Highlight | null;
+export function LayoutCanvas({ violations, focus, highlight, heat, onNetPick, onFit }: {
+  violations: Violation[]; focus: number | null; highlight: Highlight | null; heat?: Heat | null;
   onNetPick: (p: { x: number; y: number }) => void; onFit?: (fit: () => void) => void;
 }) {
   const { t } = useT();
@@ -226,6 +228,22 @@ export function LayoutCanvas({ violations, focus, highlight, onNetPick, onFit }:
         </pattern>
       </defs>
       <rect width="100%" height="100%" fill="url(#lgrid)" />
+      {heat && (heat.gx || heat.gy) ? (() => {
+        // colour ramp along the gradient direction, centred on the layout
+        const b = bbox(flat) ?? { x0: 0, y0: 0, x1: 1000, y1: 1000 };
+        const cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2, n = Math.hypot(heat.gx, heat.gy), span = 40000;
+        const ux = heat.gx / n, uy = heat.gy / n;
+        return (
+          <>
+            <defs>
+              <linearGradient id="heat" gradientUnits="userSpaceOnUse" x1={sx(cx - ux * span / 2)} y1={sy(cy - uy * span / 2)} x2={sx(cx + ux * span / 2)} y2={sy(cy + uy * span / 2)}>
+                <stop offset="0%" stopColor="#2563eb" stopOpacity="0.35" /><stop offset="50%" stopColor="#a3a3a3" stopOpacity="0.08" /><stop offset="100%" stopColor="#dc2626" stopOpacity="0.35" />
+              </linearGradient>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#heat)" />
+          </>
+        );
+      })() : null}
       <g transform={`translate(${view.x} ${view.y}) scale(${k} ${-k})`}>
         {LAYERS.filter((l) => !hidden.includes(l.id)).map((l) => (
           <g key={l.id} className={`ly ly-${l.id}`}>
@@ -257,6 +275,7 @@ export function LayoutCanvas({ violations, focus, highlight, onNetPick, onFit }:
         </g>
       ))}
       {highlight?.label && <text className="net-name" x={12} y={22}>{highlight.label}</text>}
+      {heat?.tags.map((g, i) => <text key={`ht${i}`} className="lde-tag" x={sx(g.x)} y={sy(g.y)} textAnchor="middle">{g.text}</text>)}
       {[...st.rulers, ...(tool.kind === 'ruler' && tool.from && cursor ? [{ a: tool.from, b: cursor }] : [])].map((r, i) => {
         const d = Math.hypot(r.b.x - r.a.x, r.b.y - r.a.y) / 1000;
         return (

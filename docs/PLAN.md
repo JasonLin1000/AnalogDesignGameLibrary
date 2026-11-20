@@ -118,7 +118,7 @@
 | Phase 1 MVP ✅ | 專案骨架（Vite + React + TS + i18n）、schematic 編輯器、netlister、波形檢視器、關卡框架；第 0–3 章 | 可從頭玩到第 3 章 |
 | Phase 2 ✅ | noise、溫度掃描、PVT corner、Monte Carlo；第 4–6 章 | Bandgap / LDO 關卡可玩 |
 | Phase 3 ✅ | Layout 編輯器、PCell、DRC、LVS；第 7 章 | 畫出 MOS 並通過 LVS |
-| Phase 4 | PEX、LDE、熱圖、post-sim；第 8–10 章 | pre/post 差異可被觀察與修正 |
+| Phase 4 ✅ | PEX、LDE、熱圖、post-sim；第 8–10 章 | pre/post 差異可被觀察與修正 |
 | Phase 5 | 美術、音效、NPC、排行榜、關卡編輯器、Tauri 桌面版 | 公開 release |
 
 ## 7.1 Phase 2 實作備註
@@ -137,6 +137,13 @@
 - **LVS**：先檢查標籤（短路、斷路、缺接腳），合併並聯的 finger，比較各類元件數，再以接腳標籤為錨點做回溯式圖比對（源/汲極可互換），最後比 W/L（W 容差 1%）。
 - **PCell**：MOS（多 finger、閘極頭與接觸窗、每個源/汲極一排 licon + li1）、ptap、ntap；接觸窗堆疊工具 licon / mcon / via。
 - 第 7 章：手畫電晶體、接觸窗到金屬、含基體接點的 CMOS 反相器；參考解答都由測試驗證 DRC + LVS。
+
+## 7.3 Phase 4 實作備註
+
+- **PEX**：poly / li1 / met1 / met2 每段導線切成 ≤ 1 µm 的節點（分散式 RC），電阻依電流方向計算（長度 / 寬度 × 片電阻），接觸窗為固定電阻；對地電容 = 面積 × Ca + 周長 × Cf，同層相鄰不同網路加耦合電容。數值為 SKY130 近似值。接腳標籤所在的節點就是 post-sim 的埠。
+- **LDE**：製程梯度 ΔVth = gx·x + gy·y；N 井鄰近效應 ΔVth = A·e^(−d/d0)（d 為閘極到合併後 N 井邊緣的距離）。和 Monte Carlo 一樣以閘極串聯電壓源注入。
+- **Post-sim**：測試台（電源、負載）依名稱接到接腳標籤；每個 finger 一顆 SKY130 元件，接在抽取出的 diff / poly 節點上。Monte Carlo 良率在 post-layout 網表上做（隨機 Pelgrom + 系統性 LDE）。
+- 第 8–10 章：共質心對抗梯度、N 井鄰近效應、長導線寄生 RC、地線 IR drop、1:4 電流鏡 tape-out（晶圓圖良率）。
 
 ## 8. 開發環境需求
 

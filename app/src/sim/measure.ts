@@ -38,7 +38,8 @@ export type Measure =
   | { kind: 'tran_min'; node: string; from?: number; to?: number }
   | { kind: 'tran_max'; node: string; from?: number; to?: number }
   | { kind: 'tran_freq'; node: string; level: number; from?: number }
-  | { kind: 'dc_tempco'; node: string };            // box-method temperature coefficient, ppm/°C
+  | { kind: 'dc_tempco'; node: string }             // box-method temperature coefficient, ppm/°C
+  | { kind: 'tran_delay'; from: string; to: string; level: number; edgeFrom?: 'rise' | 'fall'; edgeTo?: 'rise' | 'fall' };
 
 // ---------- helpers ----------
 export function plotFor(res: SimResult, kind: Analysis['kind']): Plot | null {
@@ -255,6 +256,17 @@ export function evaluate(m: Measure, res: SimResult): number {
       if (ups.length < 3) return 0; // not oscillating
       const k = Math.min(ups.length - 1, 10);
       return k / (ups[ups.length - 1] - ups[ups.length - 1 - k]);
+    }
+    case 'tran_delay': {
+      // time from the first `from` crossing to the next `to` crossing (propagation delay)
+      const p = need(plotFor(res, 'tran'), 'tran');
+      const t = xVector(p);
+      const t0 = crossing(t, nodeRe(p, m.from), m.level, m.edgeFrom ?? 'rise');
+      if (!Number.isFinite(t0)) return NaN;
+      const y = nodeRe(p, m.to);
+      const i0 = t.findIndex((x) => x >= t0);
+      const t1 = crossing(t.slice(Math.max(0, i0 - 1)), y.slice(Math.max(0, i0 - 1)), m.level, m.edgeTo ?? 'fall');
+      return t1 - t0;
     }
     case 'dc_tempco': {
       const p = need(plotFor(res, 'dc'), 'dc');

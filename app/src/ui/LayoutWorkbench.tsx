@@ -6,9 +6,12 @@ import type { LayoutLevel, LayoutSpec } from '../levels/types';
 import { extract } from '../layout/extract';
 import { contains } from '../layout/geom';
 import { LayerPanel } from '../layout/LayerPanel';
-import { LayoutCanvas, type Highlight } from '../layout/LayoutCanvas';
+import { LayoutCanvas, type Heat, type Highlight } from '../layout/LayoutCanvas';
 import { LayoutLabelPrompt, LayoutProps, PcellPrompt } from '../layout/LayoutDialogs';
-import { checkLayout, layoutArea, type LayoutCheck, type LSpecResult } from '../layout/score';
+import { checkLayout, checkLayoutFull, layoutArea, needsSim, type LayoutCheck, type LSpecResult } from '../layout/score';
+import { simulate } from '../sim/client';
+import { LdePane, PostPane, WaferMap } from './LayoutResults';
+import { fmtValue } from './BriefPanel';
 import { useLayout } from '../layout/store';
 import { LAYERS, LAYER, type Layout } from '../layout/types';
 import { Stars } from './BriefPanel';
@@ -33,7 +36,12 @@ export function LayoutWorkbench({ level, onExit, onGoto }: { level: LayoutLevel;
   const progress = useProgress();
   const [check, setCheck] = useState<{ r: LayoutCheck; version: number } | null>(null);
   const [focus, setFocus] = useState<number | null>(null);
-  const [tab, setTab] = useState<'ref' | 'drc' | 'lvs' | 'ex'>('ref');
+  const [tab, setTab] = useState<'ref' | 'drc' | 'lvs' | 'ex' | 'lde' | 'post' | 'yield'>('ref');
+  const [running, setRunning] = useState(false);
+  const [prog, setProg] = useState({ done: 0, total: 0 });
+  const [showHeat, setShowHeat] = useState(true);
+  const sim = needsSim(level);
+  const hasYield = [...level.specs, ...(level.stars ?? []).flat()].some((s) => s.kind === 'yield');
   const [hl, setHl] = useState<Highlight | null>(null);
   const [success, setSuccess] = useState<number | null>(null);
   const [hints, setHints] = useState(0);
@@ -49,11 +57,22 @@ export function LayoutWorkbench({ level, onExit, onGoto }: { level: LayoutLevel;
   }, [st.doc, level.id]);
 
   const stale = check ? check.version !== st.version : false;
-  const runCheck = () => {
-    const r = checkLayout(level, st.doc);
-    setCheck({ r, version: st.version });
+  const runCheck = async () => {
+    if (running) return;
+    const version = st.version, doc = st.doc;
+    const quick = checkLayout(level, doc);
+    setCheck({ r: quick, version });
     setFocus(null);
-    setTab(r.violations.length ? 'drc' : 'lvs');
+    setTab(quick.violations.length ? 'drc' : !quick.lvs.ok ? 'lvs' : sim ? 'post' : level.lde ? 'lde' : 'lvs');
+    let r = quick;
+    if (sim && quick.lvs.ok) {
+      setRunning(true); setProg({ done: 0, total: 0 });
+      try {
+        r = await checkLayoutFull(level, doc, simulate, (done, total) => setProg({ done, total }));
+        setCheck({ r, version });
+        if (hasYield && r.post) setTab('yield');
+      } finally { setRunning(false); }
+    }
     if (r.stars > 0) { progress.record(level.id, r.stars); setSuccess(r.stars); }
   };
 
@@ -88,7 +107,10 @@ export function LayoutWorkbench({ level, onExit, onGoto }: { level: LayoutLevel;
   const r = check?.r;
   const specRow = (s: LayoutSpec, res?: LSpecResult) => {
     const state = !res || stale ? 'pending' : res.pass ? 'pass' : 'fail';
-    const val = res && !stale ? (s.kind === 'area' ? `${(res.value ?? 0).toFixed(2)} µm²` : s.kind === 'drc' ? t('lay.nViol', { n: res.value ?? 0 }) : '') : '';
+    const val = res && !stale ? (s.kind === 'area' ? `${(res.value ?? 0).toFixed(2)} µm²` : s.kind === 'drc' ? t('lay.nViol', { n: res.value ?? 0 })
+      : s.kind === 'mismatch' || s.kind === 'ldeAbs' ? (Number.isFinite(res.value) ? `${(res.value ?? 0).toFixed(3)} mV` : '')
+      : s.kind === 'post' ? (res.value !== undefined ? `${fmtValue(res.value, s.unit)}${res.pre !== undefined ? ` (pre ${fmtValue(res.pre, s.unit)})` : ''}` : (running ? '…' : ''))
+      : s.kind === 'yield' ? (Number.isFinite(res.value) ? `${((res.value ?? 0) * 100).toFixed(0)}%` : (running ? '…' : '')) : '') : '';
     return (
       <li key={s.id} className={`spec ${state}`}>
         <span className="spec-icon" aria-hidden="true">{state === 'pass' ? '✓' : state === 'fail' ? '✗' : '○'}</span>
@@ -98,6 +120,9 @@ export function LayoutWorkbench({ level, onExit, onGoto }: { level: LayoutLevel;
     );
   };
   const next = nextLevel(level);
+  const heat: Heat | null = level.lde && showHeat && (level.lde.gx || level.lde.gy || (r && !stale))
+    ? { gx: level.lde.gx ?? 0, gy: level.lde.gy ?? 0, tags: r && !stale ? r.ex.devices.map((d) => ({ x: (d.gate.x0 + d.gate.x1) / 2, y: (d.gate.y0 + d.gate.y1) / 2, text: `${((r.shifts[d.id]?.total ?? 0) * 1000).toFixed(2)} mV` })) : [] }
+    : null;
 
   return (
     <div className="workbench">
@@ -120,7 +145,7 @@ export function LayoutWorkbench({ level, onExit, onGoto }: { level: LayoutLevel;
           <Btn icon="↶" label={t('tool.undo')} k="U" disabled={!st.past.length} onClick={st.undo} />
           <Btn icon="↷" label={t('tool.redo')} k="Shift+U" disabled={!st.future.length} onClick={st.redo} />
           <span className="tb-grow" />
-          <button className="run" onClick={runCheck} title="DRC + LVS">✔ {t('lay.check')}</button>
+          <button className="run" onClick={runCheck} disabled={running} title="DRC + LVS">{running ? t('post.running', { done: prog.done, total: prog.total }) : `✔ ${t(sim ? 'lay.checkPost' : 'lay.check')}`}</button>
         </div>
         <button className="link" onClick={restart}>{t('wb.restart')}</button>
       </div>
@@ -151,7 +176,7 @@ export function LayoutWorkbench({ level, onExit, onGoto }: { level: LayoutLevel;
         </aside>
         <div className="wb-center">
           <div className="canvas-wrap lay-wrap">
-            <LayoutCanvas violations={r && !stale ? r.violations : []} focus={focus} highlight={hl} onNetPick={pickNet} onFit={(f) => { fitRef.current = f; }} />
+            <LayoutCanvas violations={r && !stale ? r.violations : []} focus={focus} highlight={hl} heat={heat} onNetPick={pickNet} onFit={(f) => { fitRef.current = f; }} />
           </div>
           <div className="statusbar">
             <span className="prompt">{prompt}</span>
@@ -161,7 +186,7 @@ export function LayoutWorkbench({ level, onExit, onGoto }: { level: LayoutLevel;
           </div>
           <section className="bottom">
             <div className="tabs" role="tablist">
-              {(['ref', 'drc', 'lvs', 'ex'] as const).map((k) => (
+              {(['ref', 'drc', 'lvs', 'ex', ...(level.lde ? ['lde'] as const : []), ...(sim ? ['post'] as const : []), ...(hasYield ? ['yield'] as const : [])] as const).map((k) => (
                 <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'active' : ''} onClick={() => setTab(k)}>
                   {t(`lay.tab.${k}` as MessageKey)}{k === 'drc' && r && !stale ? ` (${r.violations.length})` : ''}{k === 'lvs' && r && !stale ? (r.lvs.ok ? ' ✓' : ' ✗') : ''}
                 </button>
@@ -190,6 +215,11 @@ export function LayoutWorkbench({ level, onExit, onGoto }: { level: LayoutLevel;
                   {r.lvs.ok && <ul className="muted small">{Object.entries(r.lvs.deviceMap).map(([s, l]) => <li key={s}>{s} ↔ {l.join(' + ')}</li>)}</ul>}
                 </div>
               ))}
+              {tab === 'lde' && (!r || stale ? <p className="empty">{t('lay.runFirst')}</p> : (
+                <div><label className="check small" style={{ padding: '6px 12px' }}><input type="checkbox" checked={showHeat} onChange={(e) => setShowHeat(e.target.checked)} /> {t('lde.showHeat')}</label><LdePane r={r} level={level} /></div>
+              ))}
+              {tab === 'post' && <PostPane r={r && !stale ? r : null} level={level} running={running} progress={prog} />}
+              {tab === 'yield' && <WaferMap r={r && !stale ? r : null} />}
               {tab === 'ex' && (!r || stale ? <p className="empty">{t('lay.runFirst')}</p> : (
                 <table className="runs-table">
                   <thead><tr><th>#</th><th>{t('lay.type')}</th><th>W (µm)</th><th>L (µm)</th><th>G</th><th>S/D</th><th>B</th></tr></thead>
