@@ -1,0 +1,50 @@
+* Trimmed SKY130 model library for AnalogDesignGame
+* Devices: nfet_01v8 pfet_01v8   Corners: tt ff ss sf fs
+* Derived from SkyWater sky130_fd_pr (Apache-2.0), see LICENSE / SOURCE.txt
+* Set mc_mm_switch=1 to enable device mismatch (Monte Carlo).
+
+.lib tt
+.param mc_mm_switch=0 mc_pr_switch=0
+.include "common.spice"
+.include "cells/nfet_01v8/sky130_fd_pr__nfet_01v8__tt.corner.spice"
+.include "cells/nfet_01v8/sky130_fd_pr__nfet_01v8__mismatch.corner.spice"
+.include "cells/pfet_01v8/sky130_fd_pr__pfet_01v8__tt.corner.spice"
+.include "cells/pfet_01v8/sky130_fd_pr__pfet_01v8__mismatch.corner.spice"
+.endl
+
+.lib ff
+.param mc_mm_switch=0 mc_pr_switch=0
+.include "common.spice"
+.include "cells/nfet_01v8/sky130_fd_pr__nfet_01v8__ff.corner.spice"
+.include "cells/nfet_01v8/sky130_fd_pr__nfet_01v8__mismatch.corner.spice"
+.include "cells/pfet_01v8/sky130_fd_pr__pfet_01v8__ff.corner.spice"
+.include "cells/pfet_01v8/sky130_fd_pr__pfet_01v8__mismatch.corner.spice"
+.endl
+
+.lib ss
+.param mc_mm_switch=0 mc_pr_switch=0
+.include "common.spice"
+.include "cells/nfet_01v8/sky130_fd_pr__nfet_01v8__ss.corner.spice"
+.include "cells/nfet_01v8/sky130_fd_pr__nfet_01v8__mismatch.corner.spice"
+.include "cells/pfet_01v8/sky130_fd_pr__pfet_01v8__ss.corner.spice"
+.include "cells/pfet_01v8/sky130_fd_pr__pfet_01v8__mismatch.corner.spice"
+.endl
+
+.lib sf
+.param mc_mm_switch=0 mc_pr_switch=0
+.include "common.spice"
+.include "cells/nfet_01v8/sky130_fd_pr__nfet_01v8__sf.corner.spice"
+.include "cells/nfet_01v8/sky130_fd_pr__nfet_01v8__mismatch.corner.spice"
+.include "cells/pfet_01v8/sky130_fd_pr__pfet_01v8__sf.corner.spice"
+.include "cells/pfet_01v8/sky130_fd_pr__pfet_01v8__mismatch.corner.spice"
+.endl
+
+.lib fs
+.param mc_mm_switch=0 mc_pr_switch=0
+.include "common.spice"
+.include "cells/nfet_01v8/sky130_fd_pr__nfet_01v8__fs.corner.spice"
+.include "cells/nfet_01v8/sky130_fd_pr__nfet_01v8__mismatch.corner.spice"
+.include "cells/pfet_01v8/sky130_fd_pr__pfet_01v8__fs.corner.spice"
+.include "cells/pfet_01v8/sky130_fd_pr__pfet_01v8__mismatch.corner.spice"
+.endl
+

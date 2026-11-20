@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ngspice WASM Demo</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --ink: #1b1f24; --muted: #5d6673; --line: #d9dde3;
+    --grid: #e8ebef; --accent: #1f6feb; --accent2: #c2410c; --ok: #15803d; --bad: #b91c1c;
+    --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f1216; --panel: #171b21; --ink: #e6e9ee; --muted: #9aa4b2; --line: #2a313b;
+            --grid: #222831; --accent: #5ea2ff; --accent2: #fb923c; --ok: #4ade80; --bad: #f87171; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 14px/1.5 system-ui, "Segoe UI", "Microsoft JhengHei", sans-serif; }
+  header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  header .sub { color: var(--muted); font-size: 12px; }
+  header .spacer { flex: 1; }
+  button, select { font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  button:disabled { opacity: .6; cursor: wait; }
+  main { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 16px; padding: 16px; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; min-width: 0; }
+  .panel h2 { font-size: 13px; margin: 0 0 8px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  textarea { width: 100%; height: 520px; resize: vertical; font: 12px/1.45 var(--mono); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-bottom: 12px; }
+  .metric { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+  .metric .k { color: var(--muted); font-size: 12px; }
+  .metric .v { font: 600 18px/1.3 var(--mono); }
+  canvas { width: 100%; height: 460px; display: block; }
+  .status { font: 12px var(--mono); color: var(--muted); margin-top: 8px; white-space: pre-wrap; word-break: break-word; }
+  .status.err { color: var(--bad); }
+  .row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1 data-i18n="title">Phase 0：瀏覽器中的 ngspice + SKY130</h1>
+    <div class="sub" data-i18n="subtitle">5T OTA 開迴路 AC 分析，模擬在 Web Worker 中以 WebAssembly 執行</div>
+  </div>
+  <div class="spacer"></div>
+  <button id="lang">EN</button>
+</header>
+<main>
+  <section class="panel">
+    <h2 data-i18n="netlist">Netlist</h2>
+    <div class="row">
+      <label for="corner" data-i18n="corner">製程 Corner</label>
+      <select id="corner">
+        <option>tt</option><option>ff</option><option>ss</option><option>sf</option><option>fs</option>
+      </select>
+      <button id="run" class="primary" data-i18n="run">執行模擬</button>
+    </div>
+    <textarea id="netlist" spellcheck="false" wrap="off"></textarea>
+  </section>
+  <section class="panel">
+    <h2 data-i18n="results">結果</h2>
+    <div class="metrics">
+      <div class="metric"><div class="k" data-i18n="a0">直流增益 A0</div><div class="v" id="m-a0">—</div></div>
+      <div class="metric"><div class="k" data-i18n="ugb">單位增益頻寬 UGB</div><div class="v" id="m-ugb">—</div></div>
+      <div class="metric"><div class="k" data-i18n="pm">相位邊限 PM</div><div class="v" id="m-pm">—</div></div>
+      <div class="metric"><div class="k" data-i18n="time">模擬時間</div><div class="v" id="m-time">—</div></div>
+    </div>
+    <canvas id="bode"></canvas>
+    <div class="status" id="status"></div>
+  </section>
+</main>
+<script type="module">
+const I18N = {
+  'zh-Hant': { title: 'Phase 0：瀏覽器中的 ngspice + SKY130', subtitle: '5T OTA 開迴路 AC 分析，模擬在 Web Worker 中以 WebAssembly 執行',
+    netlist: 'Netlist', corner: '製程 Corner', run: '執行模擬', results: '結果', a0: '直流增益 A0', ugb: '單位增益頻寬 UGB',
+    pm: '相位邊限 PM', time: '模擬時間', mag: '增益 (dB)', phase: '相位 (°)', freq: '頻率 (Hz)',
+    loading: '載入模型並模擬中…', done: (r, l) => `完成。exit=${r.exitCode}，ngspice ${r.elapsedMs.toFixed(0)} ms` + (l ? `，首次載入模型 ${l.toFixed(0)} ms` : ''), lang: 'EN' },
+  en: { title: 'Phase 0: ngspice + SKY130 in the browser', subtitle: '5T OTA open-loop AC analysis, simulated with WebAssembly in a Web Worker',
+    netlist: 'Netlist', corner: 'Process corner', run: 'Run simulation', results: 'Results', a0: 'DC gain A0', ugb: 'Unity-gain BW',
+    pm: 'Phase margin', time: 'Sim time', mag: 'Gain (dB)', phase: 'Phase (°)', freq: 'Frequency (Hz)',
+    loading: 'Loading models and simulating…', done: (r, l) => `Done. exit=${r.exitCode}, ngspice ${r.elapsedMs.toFixed(0)} ms` + (l ? `, first model load ${l.toFixed(0)} ms` : ''), lang: '中文' },
+};
+let lang = 'zh-Hant';
+try { lang = localStorage.getItem('lang') || lang; } catch {}
+const t = (k) => I18N[lang][k];
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+  document.getElementById('lang').textContent = t('lang');
+  if (lastDone) $('status').textContent = t('done')(...lastDone);
+  if (lastData) draw(lastData);
+}
+let lastDone = null;
+
+const $ = (id) => document.getElementById(id);
+const netlistEl = $('netlist');
+const worker = new Worker(new URL('./sim-worker.mjs', import.meta.url), { type: 'module' });
+let lastData = null, firstLoad = true;
+
+netlistEl.value = await fetch('../ngspice-wasm/test/ota5t.cir').then((r) => r.text());
+
+$('corner').onchange = () => {
+  netlistEl.value = netlistEl.value.replace(/(\.lib\s+"[^"]+"\s+)\w+/, `$1${$('corner').value}`);
+};
+$('lang').onclick = () => { lang = lang === 'en' ? 'zh-Hant' : 'en'; try { localStorage.setItem('lang', lang); } catch {} applyLang(); };
+
+function run() {
+  $('run').disabled = true;
+  const st = $('status'); st.className = 'status'; st.textContent = t('loading');
+  const m = netlistEl.value.match(/wrdata\s+(\S+)/);
+  const out = m ? '/work/' + m[1] : null;
+  worker.onmessage = ({ data }) => {
+    $('run').disabled = false;
+    if (!data.ok) { st.className = 'status err'; st.textContent = data.error; return; }
+    const r = data.result;
+    const num = (k) => Number((r.stdout.match(new RegExp(`${k}\\s*=\\s*([-+0-9.eE]+)`)) || [])[1]);
+    const a0 = num('a0_db'), ugb = num('ugb'), pm = num('pm');
+    $('m-a0').textContent = isFinite(a0) ? a0.toFixed(2) + ' dB' : '—';
+    $('m-ugb').textContent = isFinite(ugb) ? eng(ugb) + 'Hz' : '—';
+    $('m-pm').textContent = isFinite(pm) ? pm.toFixed(1) + '°' : '—';
+    $('m-time').textContent = r.elapsedMs.toFixed(0) + ' ms';
+    lastDone = [r, firstLoad ? data.loadMs : 0];
+    st.textContent = t('done')(...lastDone);
+    firstLoad = false;
+    const txt = out && r.files[out];
+    if (!txt) { st.className = 'status err'; st.textContent += '\n' + r.stdout.slice(-1500) + '\n' + r.stderr.slice(-1500); return; }
+    const rows = txt.trim().split(/\r?\n/).map((l) => l.trim().split(/\s+/).map(Number));
+    lastData = { f: rows.map((r) => r[0]), mag: rows.map((r) => r[1]), ph: rows.map((r) => r[3]), ugb };
+    draw(lastData);
+  };
+  worker.postMessage({ id: Date.now(), netlist: netlistEl.value, outputs: out ? [out] : [] });
+}
+$('run').onclick = run;
+
+function eng(x) {
+  const u = [[1e9, 'G'], [1e6, 'M'], [1e3, 'k'], [1, '']];
+  for (const [s, p] of u) if (Math.abs(x) >= s) return (x / s).toPrecision(4) + ' ' + p;
+  return x.toPrecision(4) + ' ';
+}
+
+function draw({ f, mag, ph, ugb }) {
+  const cv = $('bode'), dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  cv.width = W * dpr; cv.height = H * dpr;
+  const g = cv.getContext('2d'); g.scale(dpr, dpr);
+  const css = getComputedStyle(document.documentElement);
+  const c = (n) => css.getPropertyValue(n).trim();
+  g.clearRect(0, 0, W, H);
+  const L = 56, R = 12, T = 10, gap = 34, B = 36;
+  const ph1 = (H - T - B - gap) / 2;
+  const lx0 = Math.log10(f[0]), lx1 = Math.log10(f[f.length - 1]);
+  const X = (fr) => L + (Math.log10(fr) - lx0) / (lx1 - lx0) * (W - L - R);
+  const panel = (y0, data, color, label, step) => {
+    let lo = Math.min(...data), hi = Math.max(...data);
+    lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step; if (hi === lo) hi = lo + step;
+    const Y = (v) => y0 + (hi - v) / (hi - lo) * ph1;
+    g.strokeStyle = c('--grid'); g.lineWidth = 1; g.fillStyle = c('--muted'); g.font = '11px ' + c('--mono');
+    for (let d = Math.ceil(lx0); d <= Math.floor(lx1); d++) {
+      const x = X(10 ** d); g.beginPath(); g.moveTo(x, y0); g.lineTo(x, y0 + ph1); g.stroke();
+    }
+    g.textAlign = 'right'; g.textBaseline = 'middle';
+    for (let v = lo; v <= hi + 1e-9; v += step) {
+      const y = Y(v); g.beginPath(); g.moveTo(L, y); g.lineTo(W - R, y); g.stroke(); g.fillText(String(v), L - 6, y);
+    }
+    g.strokeStyle = c('--line'); g.strokeRect(L, y0, W - L - R, ph1);
+    g.strokeStyle = color; g.lineWidth = 2; g.beginPath();
+    data.forEach((v, i) => { const x = X(f[i]), y = Y(v); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke();
+    g.save(); g.translate(12, y0 + ph1 / 2); g.rotate(-Math.PI / 2); g.textAlign = 'center'; g.fillStyle = c('--muted'); g.fillText(label, 0, 0); g.restore();
+    return Y;
+  };
+  const Ym = panel(T, mag, c('--accent'), t('mag'), 20);
+  panel(T + ph1 + gap, ph, c('--accent2'), t('phase'), 45);
+  if (isFinite(ugb)) {
+    const x = X(ugb); g.setLineDash([4, 4]); g.strokeStyle = c('--ok'); g.lineWidth = 1;
+    g.beginPath(); g.moveTo(x, T); g.lineTo(x, H - B); g.stroke(); g.setLineDash([]);
+    g.fillStyle = c('--ok'); g.textAlign = 'left'; g.fillText('UGB ' + eng(ugb) + 'Hz', x + 4, Ym(0) - 8);
+  }
+  g.fillStyle = c('--muted'); g.textAlign = 'center'; g.textBaseline = 'top';
+  for (let d = Math.ceil(lx0); d <= Math.floor(lx1); d++) {
+    const p = ['', '10', '100'][((d % 3) + 3) % 3] || '1';
+    const s = ['', 'k', 'M', 'G'][Math.floor(d / 3)] ?? '';
+    g.fillText((d % 3 === 0 ? '1' : p) + s, X(10 ** d), H - B + 6);
+  }
+  g.fillText(t('freq'), L + (W - L - R) / 2, H - 16);
+}
+window.addEventListener('resize', () => lastData && draw(lastData));
+applyLang();
+run();
+</script>
+</body>
+</html>

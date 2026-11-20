@@ -1,0 +1,5 @@
+* text=auto
+*.sh text eol=lf
+*.spice text eol=lf
+*.cir text eol=lf
+*.wasm binary

@@ -1,0 +1,10 @@
+RC lowpass smoke test
+V1 in 0 DC 0 AC 1
+R1 in out 1k
+C1 out 0 1u
+.control
+ac dec 10 10 100k
+wrdata rc_ac.txt vdb(out) vp(out)
+quit
+.endc
+.end

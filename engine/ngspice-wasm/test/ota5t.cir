@@ -1,0 +1,36 @@
+5T OTA, SKY130 tt, AC open-loop
+.lib "sky130/sky130_game.lib.spice" tt
+
+.param vdd=1.8 vcm=0.9 ib=20u
+VDD vdd 0 {vdd}
+VCM cm 0 {vcm}
+VIP inp cm DC 0 AC 0.5
+EIN inn cm inp cm -1
+IB  vdd nbias {ib}
+
+* bias mirror + tail
+XM6 nbias nbias 0 0 sky130_fd_pr__nfet_01v8 L=1u W=4u
+XM5 tail  nbias 0 0 sky130_fd_pr__nfet_01v8 L=1u W=4u
+* input pair
+XM1 x   inp tail 0 sky130_fd_pr__nfet_01v8 L=0.5u W=4u
+XM2 out inn tail 0 sky130_fd_pr__nfet_01v8 L=0.5u W=4u
+* PMOS mirror load
+XM3 x   x vdd vdd sky130_fd_pr__pfet_01v8 L=0.5u W=4u
+XM4 out x vdd vdd sky130_fd_pr__pfet_01v8 L=0.5u W=4u
+CL out 0 1p
+
+.control
+op
+print v(out) v(tail) v(x)
+ac dec 20 1 10G
+let gain_db = vdb(out)
+let phase_deg = 180/pi*cph(v(out))
+meas ac a0_db find gain_db at=1
+meas ac ugb when gain_db=0
+meas ac ph_ugb find phase_deg at=ugb
+let pm = 180 + ph_ugb
+print pm
+wrdata ota_ac.txt gain_db phase_deg
+quit
+.endc
+.end
