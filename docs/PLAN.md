@@ -119,7 +119,7 @@
 | Phase 2 ✅ | noise、溫度掃描、PVT corner、Monte Carlo；第 4–6 章 | Bandgap / LDO 關卡可玩 |
 | Phase 3 ✅ | Layout 編輯器、PCell、DRC、LVS；第 7 章 | 畫出 MOS 並通過 LVS |
 | Phase 4 ✅ | PEX、LDE、熱圖、post-sim；第 8–10 章 | pre/post 差異可被觀察與修正 |
-| Phase 5 | 美術、音效、NPC、排行榜、關卡編輯器、Tauri 桌面版 | 公開 release |
+| Phase 5 ✅ | 美術、音效、NPC、紀錄、關卡編輯器、Tauri 桌面版骨架 | 公開 release |
 
 ## 7.1 Phase 2 實作備註
 
@@ -144,6 +144,15 @@
 - **LDE**：製程梯度 ΔVth = gx·x + gy·y；N 井鄰近效應 ΔVth = A·e^(−d/d0)（d 為閘極到合併後 N 井邊緣的距離）。和 Monte Carlo 一樣以閘極串聯電壓源注入。
 - **Post-sim**：測試台（電源、負載）依名稱接到接腳標籤；每個 finger 一顆 SKY130 元件，接在抽取出的 diff / poly 節點上。Monte Carlo 良率在 post-layout 網表上做（隨機 Pelgrom + 系統性 LDE）。
 - 第 8–10 章：共質心對抗梯度、N 井鄰近效應、長導線寄生 RC、地線 IR drop、1:4 電流鏡 tape-out（晶圓圖良率）。
+
+## 7.4 Phase 5 實作備註
+
+- **音效**：Web Audio 即時合成（過關琶音、失敗、放置元件、tape-out），右上角可靜音。
+- **劇情**：首次開啟的序章（歐姆機器人），tape-out 後的結業證書（可列印），滿星時彩帶特效（尊重「減少動態效果」設定）。
+- **圖鑑與紀錄**：通過關卡解鎖概念卡；各章星數統計；進度備份 / 還原（下載 JSON）。
+- **排行榜**：目前只有本機紀錄。線上排行榜需要後端伺服器，尚未實作。
+- **關卡編輯器**：在畫布上畫測試電路，填中英文說明、開放元件、分析、規格與星等；可試玩、儲存、匯出 / 匯入 `.level.json`。
+- **桌面版**：`app/src-tauri`（Tauri 2）已就緒，含圖示；需要安裝 Rust 才能執行 `npm run tauri build`（見 `app/src-tauri/README.md`）。
 
 ## 8. 開發環境需求
 

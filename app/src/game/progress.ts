@@ -64,5 +64,6 @@ export function levelUnlocked(stars: Record<string, number>, level: AnyLevel, al
 
 export function nextLevel(level: AnyLevel): AnyLevel | undefined {
   const flat = CHAPTERS.flatMap((c) => c.levels);
-  return flat[flat.findIndex((l) => l.id === level.id) + 1];
+  const i = flat.findIndex((l) => l.id === level.id);
+  return i < 0 ? undefined : flat[i + 1]; // custom levels have no next level
 }

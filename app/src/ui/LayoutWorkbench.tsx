@@ -10,6 +10,7 @@ import { LayoutCanvas, type Heat, type Highlight } from '../layout/LayoutCanvas'
 import { LayoutLabelPrompt, LayoutProps, PcellPrompt } from '../layout/LayoutDialogs';
 import { checkLayout, checkLayoutFull, layoutArea, needsSim, type LayoutCheck, type LSpecResult } from '../layout/score';
 import { simulate } from '../sim/client';
+import { sfx } from '../game/sfx';
 import { LdePane, PostPane, WaferMap } from './LayoutResults';
 import { fmtValue } from './BriefPanel';
 import { useLayout } from '../layout/store';
@@ -73,7 +74,7 @@ export function LayoutWorkbench({ level, onExit, onGoto }: { level: LayoutLevel;
         if (hasYield && r.post) setTab('yield');
       } finally { setRunning(false); }
     }
-    if (r.stars > 0) { progress.record(level.id, r.stars); setSuccess(r.stars); }
+    if (r.stars > 0) { progress.record(level.id, r.stars); setSuccess(r.stars); } else sfx.fail();
   };
 
   const ex = useMemo(() => (st.tool.kind === 'net' ? extract(st.doc) : null), [st.doc, st.tool.kind]);

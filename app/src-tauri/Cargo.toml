@@ -1,0 +1,16 @@
+[package]
+name = "analog-design-lab"
+version = "0.5.0"
+description = "Analog circuit design learning game (desktop shell)"
+license = "Apache-2.0"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+
+[profile.release]
+lto = true
+strip = true

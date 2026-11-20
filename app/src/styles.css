@@ -308,3 +308,41 @@ td.ok, span.ok { color: var(--ok); } td.bad, span.bad { color: var(--bad); }
 .wafer-info { max-width: 320px; }
 .yield-big { font: 800 44px var(--mono); }
 .yield-big.ok { color: var(--ok); } .yield-big.bad { color: var(--bad); }
+
+/* ---------- phase 5: story, codex, editor, effects ---------- */
+.appnav { display: flex; gap: 4px; margin-left: 12px; flex-wrap: wrap; }
+.appnav button { border: none; background: none; color: var(--muted); padding: 4px 8px; }
+.appnav button.active, .appnav button:hover { color: var(--ink); background: var(--panel2); }
+.icon-btn { border: none; background: none; font-size: 18px; padding: 2px 6px; }
+.confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 60; }
+.prologue { text-align: center; }
+.pro-icon { font-size: 56px; margin: 4px 0 8px; }
+.prologue h4 { font-size: 18px; margin-bottom: 8px; }
+.prologue p { color: var(--muted); line-height: 1.7; }
+.dots { display: flex; justify-content: center; gap: 6px; margin: 10px 0; }
+.dots span { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.dots span.on { background: var(--accent); }
+.certificate { border: 3px double var(--gold); border-radius: 10px; padding: 14px; margin: 8px 0; background: var(--panel2); }
+.cert-seal { font-size: 40px; color: var(--gold); }
+.certificate h4 { font-size: 18px; margin: 4px 0; }
+.cert-stars { font: 700 20px var(--mono); color: var(--gold); }
+.codex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.codex .codex-card { margin: 0; }
+.codex-card.locked { text-align: left; opacity: .65; border-left-color: var(--line); background: var(--panel2); }
+.rec-table { margin-bottom: 10px; }
+.custom-levels .level-card.custom { cursor: default; }
+.card-actions { display: flex; gap: 4px; margin-top: 4px; }
+.card-actions button { padding: 2px 8px; }
+.editor-form textarea { width: 100%; font: inherit; color: var(--ink); background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; resize: vertical; }
+.editor-form .sandbox { padding: 0; border: none; margin-top: 12px; }
+.pal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; }
+.pal-grid input.tiny { width: 40px; margin-left: auto; padding: 1px 4px; }
+.spec-edit { border: 1px solid var(--line); border-radius: 6px; padding: 6px; margin-bottom: 6px; display: flex; flex-direction: column; gap: 4px; }
+.spec-row-edit { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+.spec-row-edit input { width: 80px; flex: 1; }
+@media print {
+  body * { visibility: hidden; }
+  .certificate, .certificate * { visibility: visible; }
+  .certificate { position: absolute; left: 0; top: 0; width: 100%; border-color: #b8860b; }
+  .certificate button { display: none; }
+}

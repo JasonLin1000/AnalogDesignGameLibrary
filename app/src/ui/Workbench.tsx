@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { nextLevel, useProgress } from '../game/progress';
 import { useSession } from '../game/session';
 import { useT } from '../i18n';
+import { sfx } from '../game/sfx';
 import type { Level } from '../levels/types';
 import { SchematicCanvas } from '../schematic/SchematicCanvas';
 import { useEditor } from '../schematic/store';
@@ -56,6 +57,7 @@ export function Workbench({ level, onExit, onGoto }: { level: Level | null; onEx
       const kind = analyses.find((a) => a.kind !== 'op' && a.kind !== 'noise')?.kind;
       if (kind) for (const l of ed.sch.labels) s.addProbe({ analysis: kind, node: l.name.toLowerCase(), show: kind === 'ac' ? 'db' : 'v' });
     }
+    if (level && s.status === 'done' && s.score && s.score.stars === 0) sfx.fail();
     if (level && s.score && s.score.stars > 0) {
       progress.record(level.id, s.score.stars);
       setSuccess(s.score.stars);

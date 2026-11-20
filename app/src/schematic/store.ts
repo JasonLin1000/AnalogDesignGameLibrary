@@ -1,5 +1,7 @@
 // Editor state: schematic document, history, tools, selection, viewport.
 import { create } from 'zustand';
+import { sfx } from '../game/sfx';
+const sfxPlace = () => sfx.place();
 import type { PaletteItem } from '../levels/types';
 import { PARTS, defaultParams, nextRot, pinPositions } from './parts';
 import type { Label, Part, PartKind, Pt, Rot, Schematic, Wire } from './types';
@@ -129,6 +131,7 @@ export const useEditor = create<EditorState>((set, get) => ({
       };
       s.parts.push(part);
     });
+    sfxPlace();
     if (get().remaining(t.partKind) <= 0) set({ tool: { kind: 'select' } });
   },
 
