@@ -8,7 +8,7 @@ import { useLayout } from './store';
 import { LAYER, LAYERS, type Box, type LayerId, type Layout } from './types';
 
 type Drag =
-  | { mode: 'pan'; sx: number; sy: number; vx: number; vy: number }
+  | { mode: 'pan'; sx: number; sy: number; vx: number; vy: number; right?: boolean; moved?: boolean }
   | { mode: 'move'; start: { x: number; y: number }; d: { x: number; y: number } }
   | { mode: 'band'; a: { x: number; y: number }; b: { x: number; y: number } }
   | { mode: 'rect'; moved: boolean };
@@ -84,7 +84,8 @@ export function LayoutCanvas({ violations, focus, highlight, heat, onNetPick, on
   const onMouseDown = (e: React.MouseEvent) => {
     const w = toWorld(e), s = snap(w);
     if (e.button === 1 || (e.button === 0 && e.altKey)) { e.preventDefault(); setDrag({ mode: 'pan', sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y }); return; }
-    if (e.button === 2) { cancel(); return; }
+    // right button: drag to pan; a click without moving still cancels the current tool
+    if (e.button === 2) { e.preventDefault(); setDrag({ mode: 'pan', sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y, right: true }); return; }
     if (e.button !== 0) return;
     switch (tool.kind) {
       case 'select': {
@@ -117,13 +118,17 @@ export function LayoutCanvas({ violations, focus, highlight, heat, onNetPick, on
     const w = toWorld(e), s = snap(w);
     if (!cursor || cursor.x !== s.x || cursor.y !== s.y) st.set({ cursor: s });
     if (!drag) return;
-    if (drag.mode === 'pan') st.set({ view: { ...view, x: drag.vx + e.clientX - drag.sx, y: drag.vy + e.clientY - drag.sy } });
-    else if (drag.mode === 'move') { const d = { x: s.x - drag.start.x, y: s.y - drag.start.y }; if (d.x !== drag.d.x || d.y !== drag.d.y) setDrag({ ...drag, d }); }
+    if (drag.mode === 'pan') {
+      const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
+      if (!drag.moved && Math.hypot(dx, dy) > 3) setDrag({ ...drag, moved: true });
+      st.set({ view: { ...view, x: drag.vx + dx, y: drag.vy + dy } });
+    } else if (drag.mode === 'move') { const d = { x: s.x - drag.start.x, y: s.y - drag.start.y }; if (d.x !== drag.d.x || d.y !== drag.d.y) setDrag({ ...drag, d }); }
     else if (drag.mode === 'band') setDrag({ ...drag, b: w });
     else if (drag.mode === 'rect' && tool.kind === 'rect' && tool.from && (s.x !== tool.from.x || s.y !== tool.from.y)) setDrag({ mode: 'rect', moved: true });
   };
 
   const onMouseUp = () => {
+    if (drag?.mode === 'pan' && drag.right && !drag.moved) cancel();
     if (drag?.mode === 'move') st.moveSelection(drag.d.x, drag.d.y);
     if (drag?.mode === 'band') {
       const b = norm({ x0: drag.a.x, y0: drag.a.y, x1: drag.b.x, y1: drag.b.y });
@@ -149,13 +154,24 @@ export function LayoutCanvas({ violations, focus, highlight, heat, onNetPick, on
     else st.set({ tool: { kind: 'select' } });
   };
 
-  const onWheel = (e: React.WheelEvent) => {
+  const onWheel = (e: WheelEvent) => {
     const r = svgRef.current!.getBoundingClientRect();
     const mx = e.clientX - r.left, my = e.clientY - r.top;
     const zoom = Math.max(10, Math.min(5000, view.zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
     const f = zoom / view.zoom;
     st.set({ view: { zoom, x: mx - (mx - view.x) * f, y: my - (my - view.y) * f } });
   };
+
+  // native, non-passive wheel listener so zooming doesn't also scroll the page
+  const wheelRef = useRef(onWheel);
+  wheelRef.current = onWheel;
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el) return;
+    const h = (e: WheelEvent) => { e.preventDefault(); wheelRef.current(e); };
+    el.addEventListener('wheel', h, { passive: false });
+    return () => el.removeEventListener('wheel', h);
+  }, []);
 
   // keyboard (Virtuoso-style)
   useEffect(() => {
@@ -214,7 +230,7 @@ export function LayoutCanvas({ violations, focus, highlight, heat, onNetPick, on
     <svg ref={svgRef} className={`lay-canvas tool-${tool.kind}`} onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp}
       onMouseLeave={() => { st.set({ cursor: null }); if (drag?.mode !== 'move') setDrag(null); }}
       onDoubleClick={(e) => { if (tool.kind !== 'select') return; const h = hitLayout(doc, toWorld(e), 6 / k, hidden); if (h) st.set({ editing: h }); }}
-      onWheel={onWheel} onContextMenu={(e) => e.preventDefault()} role="application" aria-label={t('lay.canvas')}>
+      onContextMenu={(e) => e.preventDefault()} role="application" aria-label={t('lay.canvas')}>
       <defs>
         {LAYERS.map((l) => (
           <pattern key={l.id} id={`p-${l.id}`} width={pat} height={pat} patternUnits="userSpaceOnUse">

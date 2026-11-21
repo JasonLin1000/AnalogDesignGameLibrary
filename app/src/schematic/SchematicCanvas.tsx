@@ -11,7 +11,7 @@ import type { Pt, Schematic } from './types';
 import { formatEng } from './units';
 
 type Drag =
-  | { mode: 'pan'; sx: number; sy: number; vx: number; vy: number }
+  | { mode: 'pan'; sx: number; sy: number; vx: number; vy: number; right?: boolean; moved?: boolean }
   | { mode: 'move'; start: Pt; delta: Pt }
   | { mode: 'band'; start: Pt; end: Pt };
 
@@ -75,7 +75,8 @@ export function SchematicCanvas({ onRun }: { onRun: () => void }) {
       setDrag({ mode: 'pan', sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y });
       return;
     }
-    if (e.button === 2) { cancel(); return; }
+    // right button: drag to pan; a click without moving still cancels the current tool
+    if (e.button === 2) { e.preventDefault(); setDrag({ mode: 'pan', sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y, right: true }); return; }
     if (e.button !== 0) return;
     switch (tool.kind) {
       case 'select': {
@@ -121,14 +122,18 @@ export function SchematicCanvas({ onRun }: { onRun: () => void }) {
     if (!cursor || cursor.x !== s.x || cursor.y !== s.y) ed.setCursor(s);
     if (tool.kind === 'probe') setHoverNet(netAt(w));
     if (!drag) return;
-    if (drag.mode === 'pan') ed.setView({ ...view, x: drag.vx + e.clientX - drag.sx, y: drag.vy + e.clientY - drag.sy });
-    else if (drag.mode === 'move') {
+    if (drag.mode === 'pan') {
+      const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
+      if (!drag.moved && Math.hypot(dx, dy) > 3) setDrag({ ...drag, moved: true });
+      ed.setView({ ...view, x: drag.vx + dx, y: drag.vy + dy });
+    } else if (drag.mode === 'move') {
       const d = { x: s.x - drag.start.x, y: s.y - drag.start.y };
       if (d.x !== drag.delta.x || d.y !== drag.delta.y) setDrag({ ...drag, delta: d });
     } else if (drag.mode === 'band') setDrag({ ...drag, end: w });
   };
 
   const onMouseUp = () => {
+    if (drag?.mode === 'pan' && drag.right && !drag.moved) cancel();
     if (drag?.mode === 'move') ed.moveSelection(drag.delta.x, drag.delta.y);
     if (drag?.mode === 'band') {
       const b: Box = { x0: Math.min(drag.start.x, drag.end.x), y0: Math.min(drag.start.y, drag.end.y), x1: Math.max(drag.start.x, drag.end.x), y1: Math.max(drag.start.y, drag.end.y) };
@@ -144,13 +149,24 @@ export function SchematicCanvas({ onRun }: { onRun: () => void }) {
     if (h?.type === 'part') ed.setEditing(h.id);
   };
 
-  const onWheel = (e: React.WheelEvent) => {
+  const onWheel = (e: WheelEvent) => {
     const r = svgRef.current!.getBoundingClientRect();
     const mx = e.clientX - r.left, my = e.clientY - r.top;
     const zoom = Math.max(0.3, Math.min(8, view.zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
     const k = zoom / view.zoom;
     ed.setView({ zoom, x: mx - (mx - view.x) * k, y: my - (my - view.y) * k });
   };
+
+  // native, non-passive wheel listener so zooming doesn't also scroll the page
+  const wheelRef = useRef(onWheel);
+  wheelRef.current = onWheel;
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el) return;
+    const h = (e: WheelEvent) => { e.preventDefault(); wheelRef.current(e); };
+    el.addEventListener('wheel', h, { passive: false });
+    return () => el.removeEventListener('wheel', h);
+  }, []);
 
   const cancel = () => {
     if (tool.kind === 'wire' && tool.from) ed.setTool({ kind: 'wire' });
@@ -217,7 +233,6 @@ export function SchematicCanvas({ onRun }: { onRun: () => void }) {
       onMouseUp={onMouseUp}
       onMouseLeave={() => { ed.setCursor(null); if (drag?.mode !== 'move') setDrag(null); }}
       onDoubleClick={onDoubleClick}
-      onWheel={onWheel}
       onContextMenu={(e) => e.preventDefault()}
       role="application"
       aria-label={t('canvas.aria')}
