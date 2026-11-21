@@ -73,7 +73,50 @@ export function inverter(gap = 2600): Layout {
   return { shapes, labels, instances: [mn, mp, pt, nt] };
 }
 
+// ---------- 7-0: tool tutorial (PCell + labels on li1) ----------
+function tutorialLayout(): Layout {
+  const m = inst('nmos', 'M1', 0, 0, 1000, 150);
+  const t = instanceTerminals(m);
+  const at = (b: Box, name: string) => { const c = mid(b); return lb('li1', name, c.x, c.y); };
+  return { shapes: [], labels: [at(t.g!, 'g'), at(t.sd[0], 's'), at(t.sd[1], 'd')], instances: [m] };
+}
+
 const ch7Levels: LayoutLevel[] = [
+  {
+    id: '7-0', chapter: 7, mode: 'layout',
+    title: tr('工具教學：Layout 編輯器', 'Tool tutorial: the layout editor'),
+    story: tr(
+      '從這裡開始，你不再畫符號，而是畫晶片上真正的形狀。畫面上每種顏色是一層材料，右邊的圖層面板可以切換和隱藏。先跟著清單熟悉工具，每完成一步會自動打勾。',
+      'From here on you no longer draw symbols but the real shapes on the chip. Each colour on screen is one material layer; the layer panel on the right switches and hides them. Follow the checklist to learn the tools; each step ticks itself.',
+    ),
+    objective: tr('照著清單放一顆 NMOS PCell，在它的三個 li1 端子標上 d、g、s，然後按「檢查」。', 'Follow the checklist: place an NMOS PCell, label its three li1 terminals d, g and s, then press Check.'),
+    concept: {
+      title: tr('Layout 編輯器', 'The layout editor'),
+      body: tr(
+        '數字鍵選圖層、R 畫矩形、I 放 PCell、O 放接觸窗堆疊、L 放標籤、K 量尺、N 看網路、雙擊（或 Q）改座標與參數、Del 刪除、U 復原、F 縮放到全圖。「檢查」會跑 DRC（設計規則）和 LVS（和電路圖比對）。',
+        'Number keys pick a layer, R draws a rectangle, I places a PCell, O drops a contact stack, L places a label, K is the ruler, N shows a net, double-click (or Q) edits coordinates and parameters, Del deletes, U undoes, F fits the view. "Check" runs DRC (design rules) and LVS (comparison with the schematic).',
+      ),
+    },
+    guide: [
+      { key: 'pcell', text: tr('按 I（或工具列的 PCell），用預設 W = 1、L = 0.15 放一顆 NMOS。', 'Press I (or PCell in the toolbar) and place an NMOS with the default W = 1, L = 0.15.') },
+      { key: 'props', text: tr('雙擊電晶體打開屬性：這裡可以改 W、L 和指數（nf）。看完按取消。', 'Double-click the transistor to open its properties: W, L and finger count (nf) live here. Cancel when done.') },
+      { key: 'ruler', text: tr('按 K 用量尺量一下紅色 poly 的寬度（就是 L = 0.15 µm）。', 'Press K and measure the red poly width (that is L = 0.15 µm).') },
+      { key: 'layer', text: tr('按 6（或點右邊的 li1）切換到 li1 圖層。', 'Press 6 (or click li1 on the right) to switch to the li1 layer.') },
+      { key: 'rect', text: tr('按 R，在空白處拖出一個 li1 矩形。', 'Press R and drag out an li1 rectangle in empty space.') },
+      { key: 'del', text: tr('這個矩形用不到：選取它，按 Delete 刪掉。', 'We don\'t need that rectangle: select it and press Delete.') },
+      { key: 'label', text: tr('按 L 放標籤：在上方閘極墊放 g，左右兩條紫色 li1 放 s 和 d。', 'Press L to place labels: g on the gate pad at the top, s and d on the left and right purple li1 strips.') },
+      { key: 'net', text: tr('按 N，再點一條 li1：同一個網路的形狀會亮起來。', 'Press N and click an li1 strip: every shape on that net lights up.') },
+      { key: 'check', text: tr('按右上的「檢查」跑 DRC + LVS。', 'Press "Check" at the top right to run DRC + LVS.') },
+    ],
+    hints: [
+      tr('滾輪縮放、拖曳空白處平移，按 F 把整個 layout 縮放到畫面中。', 'Wheel to zoom, drag empty space to pan, and press F to fit the whole layout.'),
+      tr('標籤會放在「目前選取的圖層」上，所以放 d、g、s 前要先選 li1。', 'Labels go on the currently selected layer, so pick li1 before placing d, g and s.'),
+    ],
+    reference: nfet1, ports: ['d', 'g', 's'], pcells: ['nmos'],
+    start: emptyLayout(),
+    specs: [DRC, LVS],
+    solutions: [{ stars: 1, layout: tutorialLayout() }],
+  },
   {
     id: '7-1', chapter: 7, mode: 'layout',
     title: tr('畫出第一顆電晶體', 'Draw your first transistor'),

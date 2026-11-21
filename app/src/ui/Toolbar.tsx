@@ -1,12 +1,13 @@
 import { useT, type MessageKey } from '../i18n';
 import { useEditor } from '../schematic/store';
+import { Icon } from './Icon';
 
 function Btn({ label, keyHint, active, disabled, onClick, icon }: {
   label: string; keyHint?: string; active?: boolean; disabled?: boolean; onClick: () => void; icon: string;
 }) {
   return (
     <button className={`tb${active ? ' active' : ''}`} onClick={onClick} disabled={disabled} title={keyHint ? `${label} (${keyHint})` : label} aria-label={label}>
-      <span className="tb-icon" aria-hidden="true">{icon}</span>
+      <span className="tb-icon" aria-hidden="true"><Icon name={icon} /></span>
       <span className="tb-label">{label}</span>
     </button>
   );
@@ -19,22 +20,22 @@ export function Toolbar({ onRun, running, progress }: { onRun: () => void; runni
   const hasSel = ed.selection.length > 0;
   return (
     <div className="toolbar" role="toolbar">
-      <Btn icon="↖" label={k('tool.select')} keyHint="Esc" active={ed.tool.kind === 'select'} onClick={() => ed.setTool({ kind: 'select' })} />
-      <Btn icon="╱" label={k('tool.wire')} keyHint="W" active={ed.tool.kind === 'wire'} onClick={() => ed.setTool({ kind: 'wire' })} />
-      <Btn icon="🏷" label={k('tool.label')} keyHint="L" active={ed.tool.kind === 'label'} onClick={() => ed.setAskLabel(true)} />
-      <Btn icon="⌖" label={k('tool.probe')} keyHint="P" active={ed.tool.kind === 'probe'} onClick={() => ed.setTool({ kind: 'probe' })} />
+      <Btn icon="select" label={k('tool.select')} keyHint="Esc" active={ed.tool.kind === 'select'} onClick={() => ed.setTool({ kind: 'select' })} />
+      <Btn icon="wire" label={k('tool.wire')} keyHint="W" active={ed.tool.kind === 'wire'} onClick={() => ed.setTool({ kind: 'wire' })} />
+      <Btn icon="label" label={k('tool.label')} keyHint="L" active={ed.tool.kind === 'label'} onClick={() => ed.setAskLabel(true)} />
+      <Btn icon="probe" label={k('tool.probe')} keyHint="P" active={ed.tool.kind === 'probe'} onClick={() => ed.setTool({ kind: 'probe' })} />
       <span className="tb-sep" />
-      <Btn icon="⟳" label={k('tool.rotate')} keyHint="R" disabled={!hasSel && ed.tool.kind !== 'place'} onClick={ed.rotateSelection} />
-      <Btn icon="⇋" label={k('tool.mirror')} keyHint="E" disabled={!hasSel && ed.tool.kind !== 'place'} onClick={ed.mirrorSelection} />
-      <Btn icon="✎" label={k('tool.props')} keyHint="Q" disabled={!ed.selection.some((s) => ed.sch.parts.some((p) => p.id === s))}
+      <Btn icon="rotate" label={k('tool.rotate')} keyHint="R" disabled={!hasSel && ed.tool.kind !== 'place'} onClick={ed.rotateSelection} />
+      <Btn icon="mirror" label={k('tool.mirror')} keyHint="E" disabled={!hasSel && ed.tool.kind !== 'place'} onClick={ed.mirrorSelection} />
+      <Btn icon="edit" label={k('tool.props')} keyHint="Q" disabled={!ed.selection.some((s) => ed.sch.parts.some((p) => p.id === s))}
         onClick={() => { const id = ed.selection.find((s) => ed.sch.parts.some((p) => p.id === s)); if (id) ed.setEditing(id); }} />
-      <Btn icon="🗑" label={k('tool.delete')} keyHint="Del" disabled={!hasSel} onClick={ed.deleteSelection} />
+      <Btn icon="trash" label={k('tool.delete')} keyHint="Del" disabled={!hasSel} onClick={ed.deleteSelection} />
       <span className="tb-sep" />
-      <Btn icon="↶" label={k('tool.undo')} keyHint="U / Ctrl+Z" disabled={!ed.past.length} onClick={ed.undo} />
-      <Btn icon="↷" label={k('tool.redo')} keyHint="Shift+U / Ctrl+Y" disabled={!ed.future.length} onClick={ed.redo} />
+      <Btn icon="undo" label={k('tool.undo')} keyHint="U / Ctrl+Z" disabled={!ed.past.length} onClick={ed.undo} />
+      <Btn icon="redo" label={k('tool.redo')} keyHint="Shift+U / Ctrl+Y" disabled={!ed.future.length} onClick={ed.redo} />
       <span className="tb-grow" />
       <button className="run" onClick={onRun} disabled={running} title={`${t('tool.run')} (Ctrl+Enter)`}>
-        {running ? (progress && progress.total > 1 ? t('run.progress', { done: progress.done, total: progress.total }) : t('run.running')) : `▶ ${t('tool.run')}`}
+        {running ? (progress && progress.total > 1 ? t('run.progress', { done: progress.done, total: progress.total }) : t('run.running')) : <><Icon name="play" size={14} /> {t('tool.run')}</>}
       </button>
     </div>
   );

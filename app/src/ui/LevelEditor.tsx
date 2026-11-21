@@ -16,6 +16,7 @@ import { LabelPrompt, PropertyDialog } from './Dialogs';
 import { PartsPanel } from './PartsPanel';
 import { SandboxPanel, defaultSetup, setupToAnalyses, setupToSweep, type SandboxSetup } from './SandboxPanel';
 import { StatusBar, Toolbar } from './Toolbar';
+import { Icon } from './Icon';
 
 const KINDS: PartKind[] = ['R', 'C', 'L', 'V', 'I', 'D', 'LED', 'NMOS', 'PMOS', 'NFET', 'PFET', 'PNP', 'OPAMP'];
 type MKind = 'op_v' | 'op_i' | 'ac_gain_db' | 'ac_f3db' | 'ac_ugb' | 'ac_pm' | 'tran_v' | 'tran_cross' | 'dc_v' | 'part_count';
@@ -111,8 +112,8 @@ export function LevelEditor({ editId, onPlay, onExit }: { editId?: string; onPla
       <div className="wb-top">
         <button className="link" onClick={onExit}>← {t('wb.back')}</button>
         <Toolbar onRun={tryRun} running={session.status === 'running'} progress={session.progress} />
-        <button onClick={saveLevel}>💾 {t('edit.save')}</button>
-        <button className="primary" onClick={() => { const l = saveLevel(); if (l) onPlay(l.id); }}>▶ {t('edit.play')}</button>
+        <button onClick={saveLevel}><Icon name="save" /> {t('edit.save')}</button>
+        <button className="primary" onClick={() => { const l = saveLevel(); if (l) onPlay(l.id); }}><Icon name="play" size={14} /> {t('edit.play')}</button>
       </div>
       <div className="wb-main">
         <aside className="brief editor-form" aria-label={t('edit.title')}>

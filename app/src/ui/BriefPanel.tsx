@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useProgress } from '../game/progress';
 import { circuitToSchematic } from '../levels/autoplace';
 import { useSession } from '../game/session';
@@ -7,6 +7,9 @@ import { maxStars, type SpecResult } from '../levels/evaluate';
 import type { Level, Spec } from '../levels/types';
 import { useEditor } from '../schematic/store';
 import { formatEng } from '../schematic/units';
+import { toCircuit } from '../schematic/connectivity';
+import { GuidePanel } from './GuidePanel';
+import { Icon, Mentor } from './Icon';
 
 export function fmtValue(v: number, unit = '') {
   if (!Number.isFinite(v)) return '—';
@@ -28,7 +31,7 @@ function SpecRow({ spec, r, stale }: { spec: Spec; r?: SpecResult; stale: boolea
   const state = !r || stale ? 'pending' : r.pass ? 'pass' : 'fail';
   return (
     <li className={`spec ${state}`}>
-      <span className="spec-icon" aria-hidden="true">{state === 'pass' ? '✓' : state === 'fail' ? '✗' : '○'}</span>
+      <span className="spec-icon" aria-hidden="true">{state === 'pass' ? <Icon name="check" size={14} /> : state === 'fail' ? <Icon name="close" size={14} /> : <span className="dot" />}</span>
       <span className="spec-label">{L(spec.label)}{spec.over === 'pvt' && <span className="tag">PVT</span>}{spec.over === 'mc' && <span className="tag">{spec.stat === 'abs3sigma' ? 'MC |μ|+3σ' : 'MC'}</span>}</span>
       <span className="spec-target">{fmtTarget(spec)}</span>
       {r && !stale && (
@@ -50,13 +53,15 @@ export function Stars({ n, max }: { n: number; max: number }) {
   );
 }
 
-export function BriefPanel({ level, best }: { level: Level; best: number }) {
+export function BriefPanel({ level, best, onIntro }: { level: Level; best: number; onIntro?: () => void }) {
   const { t, L } = useT();
   const s = useSession();
   const version = useEditor((e) => e.version);
   const [hintsShown, setHintsShown] = useState(0);
   const stale = s.simVersion !== version;
   const score = s.score;
+  const sch = useEditor((e) => e.sch);
+  const circuit = useMemo(() => (level.guide ? toCircuit(sch).circuit : null), [sch, level.guide]);
   return (
     <aside className="brief" aria-label={t('brief.title')}>
       <div className="brief-head">
@@ -64,12 +69,16 @@ export function BriefPanel({ level, best }: { level: Level; best: number }) {
         <h2>{L(level.title)}</h2>
         <Stars n={best} max={maxStars(level)} />
       </div>
+      {onIntro && <button className="intro-btn" onClick={onIntro}><Icon name="cards" size={15} /> {t('intro.open')}</button>}
       <div className="mentor">
-        <span className="avatar" aria-hidden="true">🤖</span>
+        <span className="avatar"><Mentor size={36} /></span>
         <p>{L(level.story)}</p>
       </div>
       <h3>{t('brief.objective')}</h3>
       <p className="objective">{L(level.objective)}</p>
+      {level.guide && (
+        <GuidePanel levelId={level.id} steps={level.guide} ctx={{ kind: 'sch', sch, start: level.start, circuit, simulated: s.status === 'done' || s.status === 'error', passed: best > 0 || (score?.stars ?? 0) > 0 }} />
+      )}
 
       <h3>{t('brief.specs')} <span className="muted">★</span></h3>
       <ul className="specs">
@@ -93,7 +102,7 @@ export function BriefPanel({ level, best }: { level: Level; best: number }) {
       </ol>
       {hintsShown < level.hints.length && (
         <button className="hint-btn" onClick={() => setHintsShown(hintsShown + 1)}>
-          💡 {t('brief.showHint', { n: hintsShown + 1, total: level.hints.length })}
+          <Icon name="hint" size={15} /> {t('brief.showHint', { n: hintsShown + 1, total: level.hints.length })}
         </button>
       )}
       <TeacherTools level={level} />
@@ -129,9 +138,9 @@ export function Diagnostics() {
   return (
     <div className="diagnostics" role="status">
       {shown.map((d, i) => (
-        <p key={i} className={`diag ${d.level}`}>{d.level === 'error' ? '⛔' : d.level === 'warning' ? '⚠️' : 'ℹ️'} {t(`diag.${d.code}` as MessageKey, d.vars)}</p>
+        <p key={i} className={`diag ${d.level}`}><Icon name={d.level === 'error' ? 'error' : d.level === 'warning' ? 'warning' : 'info'} size={14} /> {t(`diag.${d.code}` as MessageKey, d.vars)}</p>
       ))}
-      {s.error && <p className="diag error">⛔ {t('diag.simFailed')}<br /><code>{s.error.split('\n').slice(0, 4).join('\n')}</code></p>}
+      {s.error && <p className="diag error"><Icon name="error" size={14} /> {t('diag.simFailed')}<br /><code>{s.error.split('\n').slice(0, 4).join('\n')}</code></p>}
     </div>
   );
 }

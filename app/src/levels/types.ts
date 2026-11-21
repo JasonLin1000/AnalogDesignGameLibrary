@@ -34,6 +34,9 @@ export interface PlotRequest {
   show?: 'v' | 'db' | 'phase';
 }
 
+/** A tool-tutorial checklist step; `key` names a predicate in game/guide.ts. */
+export interface GuideStep { key: string; text: Localized }
+
 export interface Level {
   id: string;
   chapter: number;
@@ -42,6 +45,7 @@ export interface Level {
   objective: Localized;       // what to build
   concept: { title: Localized; body: Localized }; // codex card unlocked on success
   hints: Localized[];
+  guide?: GuideStep[];        // tool-tutorial checklist
   palette: PaletteItem[];
   start: Schematic;
   analyses: Analysis[];
@@ -88,6 +92,7 @@ export interface LayoutLevel {
   objective: Localized;
   concept: { title: Localized; body: Localized };
   hints: Localized[];
+  guide?: GuideStep[];
   reference: Circuit;                  // devices the layout must implement
   ports: string[];                     // nets that must carry a pin label
   checkBody?: boolean;                 // compare MOS body connections in LVS

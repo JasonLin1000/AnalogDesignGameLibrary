@@ -67,14 +67,14 @@
 
 | 章 | 主題 | 範例關卡 |
 |---|---|---|
-| 0 | **電是什麼**（零基礎） | 電壓/電流（水流比喻）、點亮 LED、串並聯、歐姆定律 |
+| 0 | **電是什麼**（零基礎） | 工具教學、歐姆定律、點亮 LED、串並聯 |
 | 1 | 電路定律與被動元件 | 分壓器、KVL/KCL、RC 濾波（AC/TRAN）、時間常數、Bode 圖 |
 | 2 | 半導體元件 | 二極體 I-V、MOS Id-Vgs / Id-Vds、工作區、gm/Id、body effect |
 | 3 | 單級放大器 | CS、CD、CG、cascode、偏壓、電流鏡 |
 | 4 | 差動電路 | 差動對、5T OTA、CMRR、擺幅 |
 | 5 | 運算放大器 | 兩級 OTA、Miller 補償、相位邊限、雜訊 |
 | 6 | 類比 IP | Bandgap、LDO、StrongARM 比較器、ring osc / VCO、S/H、SAR 電容陣列 |
-| 7 | Layout 入門 | 畫 MOS、過 DRC、過 LVS、multi-finger |
+| 7 | Layout 入門 | 工具教學、畫 MOS、過 DRC、過 LVS、multi-finger |
 | 8 | 匹配佈局 | common-centroid、dummy、guard ring、對稱繞線 |
 | 9 | Post-sim | pre vs post 對比、修 IR drop、EM、耦合 |
 | 10 | 畢業專題 | LDO 或 Bandgap 全流程 + PVT + MC 良率 → **Tape-out** |
@@ -153,6 +153,14 @@
 - **排行榜**：目前只有本機紀錄。線上排行榜需要後端伺服器，尚未實作。
 - **關卡編輯器**：在畫布上畫測試電路，填中英文說明、開放元件、分析、規格與星等；可試玩、儲存、匯出 / 匯入 `.level.json`。
 - **桌面版**：`app/src-tauri`（Tauri 2）已就緒，含圖示；需要安裝 Rust 才能執行 `npm run tauri build`（見 `app/src-tauri/README.md`）。
+
+## 7.5 新手引導與介面改版
+
+- **關卡順序**：第 0 章改為 0-0 工具教學 → 0-1 歐姆定律 → 0-2 LED（題目直接給 V_LED ≈ 1.8 V）→ 0-3 跳級測驗。舊存檔的 0-1 / 0-2 星數與草稿會自動對調（`adg.progress.v1` 內 `v: 2`）。
+- **工具教學關**：0-0（電路圖）與 7-0（layout）有「操作清單」，每一步由 `game/guide.ts` 的判斷式自動打勾（放元件、旋轉、改值、拉線、接地、模擬；PCell、屬性、量尺、圖層、矩形、刪除、標籤、網路、檢查）。
+- **教學小卡**：每關第一次進入時顯示（`levels/intros.ts`），可從任務面板的「教學小卡」重開。新主題附範例圖：手工接線的電路圖（`levels/figures.ts`，由 `figures.test.ts` 以真實連線分析驗證每條線）與 layout 示意圖。
+- **下一關按鈕**：只要這關曾經過關，右下角就一直顯示「下一關」。
+- **介面**：暖白底配陶土橘主色、標題用襯線字、線條圖示取代 emoji；預設淺色，右上角可切深色。電路圖畫布為米白，layout 畫布維持暖深色。
 
 ## 8. 開發環境需求
 

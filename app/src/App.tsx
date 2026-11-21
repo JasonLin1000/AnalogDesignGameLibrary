@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
+import { Icon, Logo } from './ui/Icon';
 import { useCustom } from './game/custom';
 import { useSound } from './game/sfx';
+import { useTheme } from './game/theme';
 import { useLang, useT } from './i18n';
 import { findLevel } from './levels';
 import { isLayoutLevel, type Level } from './levels/types';
@@ -32,6 +34,7 @@ export function App() {
   const { t, lang } = useT();
   const setLang = useLang((s) => s.setLang);
   const sound = useSound();
+  const theme = useTheme();
   const custom = useCustom();
   const [route, setRoute] = useState<Route>(parseHash);
   const [story, setStory] = useState(!seenPrologue());
@@ -48,16 +51,19 @@ export function App() {
     <div className="app">
       <header className="appbar">
         <button className="brand" onClick={() => go('')}>
-          <span className="logo" aria-hidden="true">⏚</span> {t('app.name')}
+          <Logo /> <span className="brand-name">{t('app.name')}</span>
         </button>
         <nav className="appnav">
-          <button className={route.page === 'codex' ? 'active' : ''} onClick={() => go('codex')}>📖 {t('nav.codex')}</button>
-          <button className={route.page === 'editor' ? 'active' : ''} onClick={() => go('editor')}>🛠 {t('nav.editor')}</button>
-          <button onClick={() => setStory(true)}>🤖 {t('nav.story')}</button>
+          <button className={route.page === 'codex' ? 'active' : ''} onClick={() => go('codex')}><Icon name="book" /> {t('nav.codex')}</button>
+          <button className={route.page === 'editor' ? 'active' : ''} onClick={() => go('editor')}><Icon name="wrench" /> {t('nav.editor')}</button>
+          <button onClick={() => setStory(true)}><Icon name="cards" /> {t('nav.story')}</button>
         </nav>
         <span className="grow" />
+        <button className="icon-btn" onClick={theme.toggle} aria-label={t(theme.theme === 'light' ? 'nav.dark' : 'nav.light')} title={t(theme.theme === 'light' ? 'nav.dark' : 'nav.light')}>
+          <Icon name={theme.theme === 'light' ? 'moon' : 'sun'} size={18} />
+        </button>
         <button className="icon-btn" onClick={sound.toggle} aria-label={sound.muted ? t('nav.unmute') : t('nav.mute')} title={sound.muted ? t('nav.unmute') : t('nav.mute')}>
-          {sound.muted ? '🔇' : '🔊'}
+          <Icon name={sound.muted ? 'mute' : 'sound'} size={18} />
         </button>
         <button className="lang" onClick={() => setLang(lang === 'zh-TW' ? 'en' : 'zh-TW')} aria-label={t('app.switchLang')}>
           {lang === 'zh-TW' ? 'EN' : '中文'}

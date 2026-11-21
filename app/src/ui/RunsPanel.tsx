@@ -64,7 +64,7 @@ export function RunsPanel() {
           <tbody>
             {s.outcomes.map((o, i) => {
               const op = o.result && plotFor(o.result, 'op');
-              return <tr key={i}><td>{o.spec.label}</td>{list.map((n) => <td key={n}>{op ? fmtValue(op.byName.get(n)?.re[0] ?? NaN, 'V') : '⛔'}</td>)}</tr>;
+              return <tr key={i}><td>{o.spec.label}</td>{list.map((n) => <td key={n}>{op ? fmtValue(op.byName.get(n)?.re[0] ?? NaN, 'V') : '—'}</td>)}</tr>;
             })}
           </tbody>
         </table>

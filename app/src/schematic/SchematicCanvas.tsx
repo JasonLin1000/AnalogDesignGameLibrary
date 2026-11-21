@@ -163,7 +163,7 @@ export function SchematicCanvas({ onRun }: { onRun: () => void }) {
       const tgt = e.target as HTMLElement;
       if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.tagName === 'SELECT' || tgt.isContentEditable)) return;
       const st = useEditor.getState();
-      if (st.editing || st.askLabel) return;
+      if (st.editing || st.askLabel || document.querySelector('.modal-backdrop')) return;
       const k = e.key;
       const ctrl = e.ctrlKey || e.metaKey;
       if (ctrl && k === 'Enter') { e.preventDefault(); onRun(); return; }

@@ -44,8 +44,8 @@ describe('connectivity', () => {
     expect(s.wires[0].b).toEqual({ x: 0, y: -8 });
   });
 
-  it('plays level 0-1 like a player: place a resistor, wire it, simulate', async () => {
-    const level = findLevel('0-1') as import('../levels/types').Level;
+  it('plays level 0-2 (LED) like a player: place a resistor, wire it, simulate', async () => {
+    const level = findLevel('0-2') as import('../levels/types').Level;
     const s: Schematic = structuredClone(level.start);
     s.parts.push(part('R', 'R1', 7, -7, 1, { value: '316' })); // horizontal: pins at (4,-7) and (10,-7)
     s.wires.push(wire('a', 0, -7, 4, -7), wire('b', 10, -7, 14, -7));

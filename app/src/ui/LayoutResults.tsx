@@ -42,7 +42,7 @@ export function PostPane({ r, level, running, progress }: { r: LayoutCheck | nul
   const top = Object.entries(r.post.pex.stats.totalC).filter(([n]) => n !== '?').sort((a, b) => b[1] - a[1]).slice(0, 6);
   return (
     <div className="post-pane">
-      {r.post.error && <p className="err">⛔ {r.post.error}</p>}
+      {r.post.error && <p className="err">{r.post.error}</p>}
       <table className="runs-table">
         <thead><tr><th>{t('post.measure')}</th><th>Pre-sim</th><th>Post-sim</th><th>Δ</th></tr></thead>
         <tbody>{rows.map((x: LSpecResult) => {

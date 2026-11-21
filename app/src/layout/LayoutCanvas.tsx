@@ -163,7 +163,7 @@ export function LayoutCanvas({ violations, focus, highlight, heat, onNetPick, on
       const tg = e.target as HTMLElement;
       if (tg && (tg.tagName === 'INPUT' || tg.tagName === 'TEXTAREA' || tg.tagName === 'SELECT')) return;
       const s = useLayout.getState();
-      if (s.editing || s.askLabel || s.askPcell) return;
+      if (s.editing || s.askLabel || s.askPcell || document.querySelector('.modal-backdrop')) return;
       const ctrl = e.ctrlKey || e.metaKey;
       if (ctrl && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); if (e.shiftKey) s.redo(); else s.undo(); return; }
       if (ctrl && (e.key === 'y' || e.key === 'Y')) { e.preventDefault(); s.redo(); return; }

@@ -18,12 +18,16 @@ import { LAYERS, LAYER, type Layout } from '../layout/types';
 import { Stars } from './BriefPanel';
 import { StaticSchematic } from './StaticSchematic';
 import { SuccessModal } from './SuccessModal';
+import { IntroCards, hasIntro, introSeen } from './IntroCards';
+import { NextLevelButton } from './NextLevelButton';
+import { GuidePanel } from './GuidePanel';
+import { Icon, Mentor } from './Icon';
 
 const draftKey = (id: string) => `adg.layout.${id}`;
 const loadDraft = (id: string): Layout | null => { try { const s = localStorage.getItem(draftKey(id)); return s ? JSON.parse(s) : null; } catch { return null; } };
 const f3 = (nmv: number) => (nmv / 1000).toFixed(3);
 
-function Btn({ icon, label, k, active, disabled, onClick }: { icon: string; label: string; k?: string; active?: boolean; disabled?: boolean; onClick: () => void }) {
+function Btn({ icon, label, k, active, disabled, onClick }: { icon: React.ReactNode; label: string; k?: string; active?: boolean; disabled?: boolean; onClick: () => void }) {
   return (
     <button className={`tb${active ? ' active' : ''}`} onClick={onClick} disabled={disabled} title={k ? `${label} (${k})` : label} aria-label={label}>
       <span className="tb-icon" aria-hidden="true">{icon}</span><span className="tb-label">{label}</span>
@@ -46,11 +50,13 @@ export function LayoutWorkbench({ level, onExit, onGoto }: { level: LayoutLevel;
   const [hl, setHl] = useState<Highlight | null>(null);
   const [success, setSuccess] = useState<number | null>(null);
   const [hints, setHints] = useState(0);
+  const [intro, setIntro] = useState(false);
   const fitRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     st.load(loadDraft(level.id) ?? level.start, { pcells: level.pcells });
     setCheck(null); setFocus(null); setHl(null); setSuccess(null); setHints(0); setTab('ref');
+    setIntro(hasIntro(level.id) && !introSeen(level.id));
   }, [level.id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const id = setTimeout(() => { try { localStorage.setItem(draftKey(level.id), JSON.stringify(st.doc)); } catch { /* ignore */ } }, 300);
@@ -114,7 +120,7 @@ export function LayoutWorkbench({ level, onExit, onGoto }: { level: LayoutLevel;
       : s.kind === 'yield' ? (Number.isFinite(res.value) ? `${((res.value ?? 0) * 100).toFixed(0)}%` : (running ? '…' : '')) : '') : '';
     return (
       <li key={s.id} className={`spec ${state}`}>
-        <span className="spec-icon" aria-hidden="true">{state === 'pass' ? '✓' : state === 'fail' ? '✗' : '○'}</span>
+        <span className="spec-icon" aria-hidden="true">{state === 'pass' ? <Icon name="check" size={14} /> : state === 'fail' ? <Icon name="close" size={14} /> : <span className="dot" />}</span>
         <span className="spec-label">{L(s.label)}</span><span className="spec-target" />
         {val && <span className="spec-value">{val}</span>}
       </li>
@@ -128,34 +134,36 @@ export function LayoutWorkbench({ level, onExit, onGoto }: { level: LayoutLevel;
   return (
     <div className="workbench">
       <div className="wb-top">
-        <button className="link" onClick={onExit}>← {t('wb.back')}</button>
+        <button className="link" onClick={onExit}><Icon name="arrowLeft" size={14} /> {t('wb.back')}</button>
         <div className="toolbar" role="toolbar">
-          <Btn icon="↖" label={t('tool.select')} k="Esc" active={tool === 'select'} onClick={() => st.set({ tool: { kind: 'select' } })} />
-          <Btn icon="▭" label={t('lay.t.rect')} k="R" active={tool === 'rect'} onClick={() => st.set({ tool: { kind: 'rect' } })} />
-          <Btn icon="🏷" label={t('tool.label')} k="L" active={tool === 'label'} onClick={() => st.set({ askLabel: true })} />
-          {level.pcells.length > 0 && <Btn icon="⧉" label={t('lay.t.pcell')} k="I" active={tool === 'pcell'} onClick={() => st.set({ askPcell: level.pcells[0] })} />}
+          <Btn icon={<Icon name="select" />} label={t('tool.select')} k="Esc" active={tool === 'select'} onClick={() => st.set({ tool: { kind: 'select' } })} />
+          <Btn icon={<Icon name="rect" />} label={t('lay.t.rect')} k="R" active={tool === 'rect'} onClick={() => st.set({ tool: { kind: 'rect' } })} />
+          <Btn icon={<Icon name="label" />} label={t('tool.label')} k="L" active={tool === 'label'} onClick={() => st.set({ askLabel: true })} />
+          {level.pcells.length > 0 && <Btn icon={<Icon name="pcell" />} label={t('lay.t.pcell')} k="I" active={tool === 'pcell'} onClick={() => st.set({ askPcell: level.pcells[0] })} />}
           {(['licon', 'mcon', 'via'] as const).map((s) => (
-            <Btn key={s} icon="⊠" label={s} k="O" active={st.tool.kind === 'stack' && st.tool.stack === s} onClick={() => st.set({ tool: { kind: 'stack', stack: s } })} />
+            <Btn key={s} icon={<Icon name="contact" />} label={s} k="O" active={st.tool.kind === 'stack' && st.tool.stack === s} onClick={() => st.set({ tool: { kind: 'stack', stack: s } })} />
           ))}
           <span className="tb-sep" />
-          <Btn icon="📏" label={t('lay.t.ruler')} k="K" active={tool === 'ruler'} onClick={() => st.set({ tool: { kind: 'ruler' } })} />
-          <Btn icon="🔦" label={t('lay.t.net')} k="N" active={tool === 'net'} onClick={() => st.set({ tool: { kind: 'net' } })} />
-          <Btn icon="✎" label={t('tool.props')} k="Q" disabled={!st.selection.length} onClick={() => st.set({ editing: st.selection[0] })} />
-          <Btn icon="⧉" label={t('lay.t.copy')} k="C" disabled={!st.selection.length} onClick={st.duplicateSelection} />
-          <Btn icon="🗑" label={t('tool.delete')} k="Del" disabled={!st.selection.length} onClick={st.deleteSelection} />
-          <Btn icon="↶" label={t('tool.undo')} k="U" disabled={!st.past.length} onClick={st.undo} />
-          <Btn icon="↷" label={t('tool.redo')} k="Shift+U" disabled={!st.future.length} onClick={st.redo} />
+          <Btn icon={<Icon name="ruler" />} label={t('lay.t.ruler')} k="K" active={tool === 'ruler'} onClick={() => st.set({ tool: { kind: 'ruler' } })} />
+          <Btn icon={<Icon name="net" />} label={t('lay.t.net')} k="N" active={tool === 'net'} onClick={() => st.set({ tool: { kind: 'net' } })} />
+          <Btn icon={<Icon name="edit" />} label={t('tool.props')} k="Q" disabled={!st.selection.length} onClick={() => st.set({ editing: st.selection[0] })} />
+          <Btn icon={<Icon name="copy" />} label={t('lay.t.copy')} k="C" disabled={!st.selection.length} onClick={st.duplicateSelection} />
+          <Btn icon={<Icon name="trash" />} label={t('tool.delete')} k="Del" disabled={!st.selection.length} onClick={st.deleteSelection} />
+          <Btn icon={<Icon name="undo" />} label={t('tool.undo')} k="U" disabled={!st.past.length} onClick={st.undo} />
+          <Btn icon={<Icon name="redo" />} label={t('tool.redo')} k="Shift+U" disabled={!st.future.length} onClick={st.redo} />
           <span className="tb-grow" />
-          <button className="run" onClick={runCheck} disabled={running} title="DRC + LVS">{running ? t('post.running', { done: prog.done, total: prog.total }) : `✔ ${t(sim ? 'lay.checkPost' : 'lay.check')}`}</button>
+          <button className="run" onClick={runCheck} disabled={running} title="DRC + LVS">{running ? t('post.running', { done: prog.done, total: prog.total }) : <><Icon name="check" /> {t(sim ? 'lay.checkPost' : 'lay.check')}</>}</button>
         </div>
         <button className="link" onClick={restart}>{t('wb.restart')}</button>
       </div>
       <div className="wb-main">
         <aside className="brief" aria-label={t('brief.title')}>
           <div className="brief-head"><span className="level-id">{level.id}</span><h2>{L(level.title)}</h2><Stars n={progress.stars[level.id] ?? 0} max={maxStars(level)} /></div>
-          <div className="mentor"><span className="avatar" aria-hidden="true">🤖</span><p>{L(level.story)}</p></div>
+          {hasIntro(level.id) && <button className="intro-btn" onClick={() => setIntro(true)}><Icon name="cards" size={15} /> {t('intro.open')}</button>}
+          <div className="mentor"><span className="avatar"><Mentor size={36} /></span><p>{L(level.story)}</p></div>
           <h3>{t('brief.objective')}</h3>
           <p className="objective">{L(level.objective)}</p>
+          {level.guide && <GuidePanel levelId={level.id} steps={level.guide} ctx={{ kind: 'lay', doc: st.doc, layer: st.layer, rulers: st.rulers.length, tool: st.tool.kind, editing: st.editing !== null, passed: (progress.stars[level.id] ?? 0) > 0 }} />}
           <h3>{t('brief.specs')} <span className="muted">★</span></h3>
           <ul className="specs">{level.specs.map((s, i) => specRow(s, r?.main[i]))}</ul>
           {level.stars?.map((tier, k) => (
@@ -166,7 +174,7 @@ export function LayoutWorkbench({ level, onExit, onGoto }: { level: LayoutLevel;
           {stale && <p className="note">{t('brief.stale')}</p>}
           <h3>{t('brief.hints')}</h3>
           <ol className="hints">{level.hints.slice(0, hints).map((h, i) => <li key={i}>{L(h)}</li>)}</ol>
-          {hints < level.hints.length && <button className="hint-btn" onClick={() => setHints(hints + 1)}>💡 {t('brief.showHint', { n: hints + 1, total: level.hints.length })}</button>}
+          {hints < level.hints.length && <button className="hint-btn" onClick={() => setHints(hints + 1)}><Icon name="hint" size={15} /> {t('brief.showHint', { n: hints + 1, total: level.hints.length })}</button>}
           {progress.unlockAll && (
             <details className="teacher"><summary>{t('teacher.title')}</summary>
               {[...level.solutions].sort((a, b) => b.stars - a.stars).map((s, i) => (
@@ -212,7 +220,7 @@ export function LayoutWorkbench({ level, onExit, onGoto }: { level: LayoutLevel;
               {tab === 'lvs' && (!r || stale ? <p className="empty">{t('lay.runFirst')}</p> : (
                 <div className="lvs-pane">
                   <p className={r.lvs.ok ? 'ok-msg' : 'err'}>{r.lvs.ok ? `✓ ${t('lvs.ok')}` : `✗ ${t('lvs.fail')}`}</p>
-                  <ul>{r.lvs.issues.map((x, i) => <li key={i} className={`diag ${x.level}`}>{x.level === 'error' ? '⛔' : '⚠️'} {t(`lvs.${x.code}` as MessageKey, x.vars)}</li>)}</ul>
+                  <ul>{r.lvs.issues.map((x, i) => <li key={i} className={`diag ${x.level}`}><Icon name={x.level === 'error' ? 'error' : 'warning'} size={14} /> {t(`lvs.${x.code}` as MessageKey, x.vars)}</li>)}</ul>
                   {r.lvs.ok && <ul className="muted small">{Object.entries(r.lvs.deviceMap).map(([s, l]) => <li key={s}>{s} ↔ {l.join(' + ')}</li>)}</ul>}
                 </div>
               ))}
@@ -232,6 +240,8 @@ export function LayoutWorkbench({ level, onExit, onGoto }: { level: LayoutLevel;
         </div>
         <LayerPanel />
       </div>
+      {next && (progress.stars[level.id] ?? 0) > 0 && success === null && <NextLevelButton onClick={() => onGoto(next.id)} />}
+      {intro && <IntroCards levelId={level.id} onClose={() => setIntro(false)} />}
       <LayoutProps />
       <LayoutLabelPrompt />
       <PcellPrompt />

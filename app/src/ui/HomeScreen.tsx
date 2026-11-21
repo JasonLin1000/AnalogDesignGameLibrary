@@ -5,6 +5,7 @@ import { useT } from '../i18n';
 import { CHAPTERS } from '../levels';
 import { maxStars } from '../levels/evaluate';
 import { Stars } from './BriefPanel';
+import { Icon } from './Icon';
 
 export function HomeScreen({ onPlay, onSandbox }: { onPlay: (id: string) => void; onSandbox: () => void }) {
   const { t, L } = useT();
@@ -17,7 +18,7 @@ export function HomeScreen({ onPlay, onSandbox }: { onPlay: (id: string) => void
         <h1>{t('home.title')}</h1>
         <p>{t('home.tagline')}</p>
         <div className="hero-actions">
-          <button className="primary" onClick={onSandbox}>🧪 {t('home.sandbox')}</button>
+          <button className="primary" onClick={onSandbox}><Icon name="flask" /> {t('home.sandbox')}</button>
           <span className="muted">★ {got} / {total}</span>
         </div>
       </section>
@@ -28,8 +29,8 @@ export function HomeScreen({ onPlay, onSandbox }: { onPlay: (id: string) => void
         return (
           <section key={ch.id} className={`chapter${open ? '' : ' locked'}`}>
             <header>
-              <h2>{L(ch.title)} {done && <span className="badge">✓ {t('home.done')}</span>}</h2>
-              {!open && <span className="lock">🔒 {t('home.locked')}</span>}
+              <h2>{L(ch.title)} {done && <span className="badge"><Icon name="check" size={12} /> {t('home.done')}</span>}</h2>
+              {!open && <span className="lock"><Icon name="lock" size={14} /> {t('home.locked')}</span>}
             </header>
             <p className="intro">{L(ch.intro)}</p>
             <div className="levels">
@@ -40,12 +41,12 @@ export function HomeScreen({ onPlay, onSandbox }: { onPlay: (id: string) => void
                     <span className="level-id">{lv.id}{lv.skipTest ? ` · ${t('home.skipTest')}` : ''}</span>
                     <span className="level-title">{L(lv.title)}</span>
                     <Stars n={p.stars[lv.id] ?? 0} max={maxStars(lv)} />
-                    {!unlocked && <span className="lock" aria-label={t('home.locked')}>🔒</span>}
+                    {!unlocked && <span className="lock" aria-label={t('home.locked')}><Icon name="lock" size={14} /></span>}
                   </button>
                 );
               })}
             </div>
-            {open && test && !done && <p className="skip-note">⏩ {t('home.skipNote', { id: test.id })}</p>}
+            {open && test && !done && <p className="skip-note"><Icon name="skip" size={14} /> {t('home.skipNote', { id: test.id })}</p>}
           </section>
         );
       })}
@@ -78,7 +79,7 @@ function CustomSection({ onEdit, onPlayCustom }: { onEdit: (id?: string) => void
   };
   return (
     <section className="chapter custom-levels">
-      <header><h2>🛠 {t('custom.title')}</h2></header>
+      <header><h2>{t('custom.title')}</h2></header>
       <p className="intro">{t('custom.intro')}</p>
       <div className="levels">
         {custom.levels.map((lv) => (
@@ -87,17 +88,17 @@ function CustomSection({ onEdit, onPlayCustom }: { onEdit: (id?: string) => void
             <span className="level-title">{L(lv.title)}</span>
             <Stars n={p.stars[lv.id] ?? 0} max={maxStars(lv)} />
             <div className="card-actions">
-              <button onClick={() => onPlayCustom(lv.id)}>▶</button>
-              <button onClick={() => onEdit(lv.id)} aria-label={t('custom.edit')}>✎</button>
+              <button onClick={() => onPlayCustom(lv.id)} aria-label={t('edit.play')}><Icon name="play" size={14} /></button>
+              <button onClick={() => onEdit(lv.id)} aria-label={t('custom.edit')}><Icon name="edit" size={14} /></button>
               <button onClick={() => downloadJson(`${lv.id}.level.json`, lv)} aria-label={t('custom.export')}>⤓</button>
-              <button onClick={() => { if (confirm(t('custom.deleteConfirm'))) custom.remove(lv.id); }} aria-label={t('tool.delete')}>🗑</button>
+              <button onClick={() => { if (confirm(t('custom.deleteConfirm'))) custom.remove(lv.id); }} aria-label={t('tool.delete')}><Icon name="trash" size={14} /></button>
             </div>
           </div>
         ))}
       </div>
       <div className="hero-actions">
         <button className="primary" onClick={() => onEdit()}>+ {t('custom.new')}</button>
-        <button onClick={() => file.current?.click()}>📂 {t('custom.import')}</button>
+        <button onClick={() => file.current?.click()}><Icon name="folder" /> {t('custom.import')}</button>
         <input ref={file} type="file" accept="application/json,.json" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void importFile(f); e.target.value = ''; }} />
         {msg && <span className="muted">{msg}</span>}
       </div>

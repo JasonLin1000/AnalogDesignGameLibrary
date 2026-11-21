@@ -6,6 +6,7 @@ import { useT } from '../i18n';
 import { CHAPTERS } from '../levels';
 import { maxStars } from '../levels/evaluate';
 import { Stars } from './BriefPanel';
+import { Icon } from './Icon';
 
 export function CodexPage({ onPlay }: { onPlay: (id: string) => void }) {
   const { t, L } = useT();
@@ -48,8 +49,8 @@ export function CodexPage({ onPlay }: { onPlay: (id: string) => void }) {
           })}</tbody>
         </table>
         <div className="hero-actions">
-          <button onClick={backup}>💾 {t('rec.backup')}</button>
-          <button onClick={() => file.current?.click()}>📂 {t('rec.restore')}</button>
+          <button onClick={backup}><Icon name="save" /> {t('rec.backup')}</button>
+          <button onClick={() => file.current?.click()}><Icon name="folder" /> {t('rec.restore')}</button>
           <input ref={file} type="file" accept="application/json,.json" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void restore(f); e.target.value = ''; }} />
           {msg && <span className="err">{msg}</span>}
         </div>
@@ -70,7 +71,7 @@ export function CodexPage({ onPlay }: { onPlay: (id: string) => void }) {
               ) : (
                 <button key={l.id} className="codex-card locked" onClick={() => onPlay(l.id)}>
                   <span className="codex-tag">{l.id}</span>
-                  <h4>🔒 {L(l.title)}</h4>
+                  <h4><Icon name="lock" size={14} /> {L(l.title)}</h4>
                   <p className="muted">{t('codex.locked')}</p>
                 </button>
               );

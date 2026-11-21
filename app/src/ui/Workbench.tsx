@@ -14,7 +14,10 @@ import { LabelPrompt, PropertyDialog } from './Dialogs';
 import { PartsPanel } from './PartsPanel';
 import { SandboxPanel, defaultSetup, setupToAnalyses, setupToSweep, type SandboxSetup } from './SandboxPanel';
 import { SuccessModal } from './SuccessModal';
+import { IntroCards, hasIntro, introSeen } from './IntroCards';
+import { NextLevelButton } from './NextLevelButton';
 import { StatusBar, Toolbar } from './Toolbar';
+import { Icon } from './Icon';
 
 const draftKey = (id: string) => `adg.draft.${id}`;
 function loadDraft(id: string): Schematic | null {
@@ -28,6 +31,7 @@ export function Workbench({ level, onExit, onGoto }: { level: Level | null; onEx
   const progress = useProgress();
   const [setup, setSetup] = useState<SandboxSetup>(defaultSetup);
   const [success, setSuccess] = useState<number | null>(null);
+  const [intro, setIntro] = useState(false);
   const docKey = level ? level.id : 'sandbox';
   const lastRun = useRef(-1);
 
@@ -37,6 +41,7 @@ export function Workbench({ level, onExit, onGoto }: { level: Level | null; onEx
     ed.load(draft ?? (level ? level.start : emptySchematic()), level ? level.palette : null);
     session.reset((level?.plots ?? []).map((p) => ({ analysis: p.analysis, node: p.node, show: p.show })));
     setSuccess(null);
+    setIntro(!!level && hasIntro(level.id) && !introSeen(level.id));
   }, [docKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // autosave drafts (per-viewer convenience)
@@ -76,12 +81,12 @@ export function Workbench({ level, onExit, onGoto }: { level: Level | null; onEx
   return (
     <div className="workbench">
       <div className="wb-top">
-        <button className="link" onClick={onExit}>← {t('wb.back')}</button>
+        <button className="link" onClick={onExit}><Icon name="arrowLeft" size={14} /> {t('wb.back')}</button>
         <Toolbar onRun={run} running={session.status === 'running'} progress={session.progress} />
         <button className="link" onClick={restart}>{t('wb.restart')}</button>
       </div>
       <div className="wb-main">
-        {level ? <BriefPanel level={level} best={progress.stars[level.id] ?? 0} /> : <SandboxPanel setup={setup} onChange={setSetup} />}
+        {level ? <BriefPanel level={level} best={progress.stars[level.id] ?? 0} onIntro={hasIntro(level.id) ? () => setIntro(true) : undefined} /> : <SandboxPanel setup={setup} onChange={setSetup} />}
         <div className="wb-center">
           <div className="canvas-wrap"><SchematicCanvas onRun={run} /></div>
           <StatusBar />
@@ -89,6 +94,8 @@ export function Workbench({ level, onExit, onGoto }: { level: Level | null; onEx
         </div>
         <PartsPanel />
       </div>
+      {level && next && (progress.stars[level.id] ?? 0) > 0 && success === null && <NextLevelButton onClick={() => onGoto(next.id)} />}
+      {level && intro && <IntroCards levelId={level.id} onClose={() => setIntro(false)} />}
       <PropertyDialog />
       <LabelPrompt />
       {level && success !== null && (
