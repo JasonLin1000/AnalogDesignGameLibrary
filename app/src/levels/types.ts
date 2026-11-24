@@ -37,6 +37,9 @@ export interface PlotRequest {
 /** A tool-tutorial checklist step; `key` names a predicate in game/guide.ts. */
 export interface GuideStep { key: string; text: Localized }
 
+/** A step of a large IP taught in parts; the last step (step === of) assembles the whole block. */
+export interface IpPart { ip: Localized; step: number; of: number }
+
 export interface Level {
   id: string;
   chapter: number;
@@ -46,6 +49,7 @@ export interface Level {
   concept: { title: Localized; body: Localized }; // codex card unlocked on success
   hints: Localized[];
   guide?: GuideStep[];        // tool-tutorial checklist
+  part?: IpPart;              // step of a multi-part IP track
   palette: PaletteItem[];
   start: Schematic;
   analyses: Analysis[];
@@ -93,6 +97,7 @@ export interface LayoutLevel {
   concept: { title: Localized; body: Localized };
   hints: Localized[];
   guide?: GuideStep[];
+  part?: IpPart;
   reference: Circuit;                  // devices the layout must implement
   ports: string[];                     // nets that must carry a pin label
   checkBody?: boolean;                 // compare MOS body connections in LVS

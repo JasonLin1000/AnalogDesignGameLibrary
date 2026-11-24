@@ -1,6 +1,7 @@
 import { C, L, Lb, P, W, X, sch } from './build';
 import type { LogicalPart } from '../schematic/types';
 import type { Chapter } from './types';
+import { bandgapPart, ctatLevel, ldoPart, loopLevel, passLevel, ptatLevel } from './ch6parts';
 
 // ---------------- Bandgap ----------------
 const pf = (name: string, x: number, y: number) => P('PFET', name, x, y, { w: '4u', l: '2u', nf: '1' });
@@ -66,8 +67,10 @@ export const ch6: Chapter = {
     'Every chip needs a stable reference voltage and a clean supply. In this chapter you design two real product-grade IPs: a bandgap reference that shrugs off temperature, and a low-dropout regulator (LDO) that survives sudden load changes.',
   ),
   levels: [
+    ctatLevel,
+    ptatLevel,
     {
-      id: '6-1', chapter: 6,
+      id: '6-1', chapter: 6, part: bandgapPart(3),
       title: L('能隙參考電壓', 'Bandgap reference'),
       story: L(
         '二極體電壓隨溫度下降（CTAT），兩顆不同大小二極體的電壓差隨溫度上升（PTAT）。把兩者用對的比例加起來，就得到一個從 −40 °C 到 125 °C 幾乎不變的電壓。電路已經幫你搭好了，只差兩顆電阻。',
@@ -105,8 +108,10 @@ export const ch6: Chapter = {
         { stars: 3, circuit: bg('10k', '59k') },
       ],
     },
+    passLevel,
+    loopLevel,
     {
-      id: '6-2', chapter: 6, skipTest: true,
+      id: '6-2', chapter: 6, skipTest: true, part: ldoPart(3),
       title: L('低壓差穩壓器 LDO', 'Low-dropout regulator'),
       story: L(
         '數位電路的電流會在一微秒內從 1 mA 跳到 10 mA。你的 LDO 要從 1.8 V 穩穩地輸出 1.2 V，而且負載突變時不能晃、更不能振盪。',

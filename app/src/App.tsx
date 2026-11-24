@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Icon, Logo } from './ui/Icon';
 import { useCustom } from './game/custom';
-import { useSound } from './game/sfx';
 import { useTheme } from './game/theme';
-import { useLang, useT } from './i18n';
+import { useT } from './i18n';
+import { useSettings } from './game/settings';
+import { SettingsPage } from './ui/SettingsPage';
 import { findLevel } from './levels';
 import { isLayoutLevel, type Level } from './levels/types';
 import { CodexPage } from './ui/CodexPage';
@@ -15,12 +16,13 @@ import { Workbench } from './ui/Workbench';
 
 type Route =
   | { page: 'home' } | { page: 'level'; id: string } | { page: 'sandbox' } | { page: 'codex' }
-  | { page: 'editor'; id?: string } | { page: 'custom'; id: string };
+  | { page: 'editor'; id?: string } | { page: 'custom'; id: string } | { page: 'settings' };
 
 function parseHash(): Route {
   const h = location.hash.replace(/^#\/?/, '');
   if (h === 'sandbox') return { page: 'sandbox' };
   if (h === 'codex') return { page: 'codex' };
+  if (h === 'settings') return { page: 'settings' };
   let m = h.match(/^editor(?:\/(.+))?$/);
   if (m) return { page: 'editor', id: m[1] };
   m = h.match(/^custom\/(.+)$/);
@@ -32,9 +34,8 @@ function parseHash(): Route {
 
 export function App() {
   const { t, lang } = useT();
-  const setLang = useLang((s) => s.setLang);
-  const sound = useSound();
-  const theme = useTheme();
+  useTheme(); // applies the stored theme
+  useSettings(); // applies the stored font size
   const custom = useCustom();
   const [route, setRoute] = useState<Route>(parseHash);
   const [story, setStory] = useState(!seenPrologue());
@@ -53,21 +54,12 @@ export function App() {
         <button className="brand" onClick={() => go('')}>
           <Logo /> <span className="brand-name">{t('app.name')}</span>
         </button>
-        <nav className="appnav">
-          <button className={route.page === 'codex' ? 'active' : ''} onClick={() => go('codex')}><Icon name="book" /> {t('nav.codex')}</button>
-          <button className={route.page === 'editor' ? 'active' : ''} onClick={() => go('editor')}><Icon name="wrench" /> {t('nav.editor')}</button>
-          <button onClick={() => setStory(true)}><Icon name="cards" /> {t('nav.story')}</button>
-        </nav>
         <span className="grow" />
-        <button className="icon-btn" onClick={theme.toggle} aria-label={t(theme.theme === 'light' ? 'nav.dark' : 'nav.light')} title={t(theme.theme === 'light' ? 'nav.dark' : 'nav.light')}>
-          <Icon name={theme.theme === 'light' ? 'moon' : 'sun'} size={18} />
-        </button>
-        <button className="icon-btn" onClick={sound.toggle} aria-label={sound.muted ? t('nav.unmute') : t('nav.mute')} title={sound.muted ? t('nav.unmute') : t('nav.mute')}>
-          <Icon name={sound.muted ? 'mute' : 'sound'} size={18} />
-        </button>
-        <button className="lang" onClick={() => setLang(lang === 'zh-TW' ? 'en' : 'zh-TW')} aria-label={t('app.switchLang')}>
-          {lang === 'zh-TW' ? 'EN' : '中文'}
-        </button>
+        <nav className="appnav">
+          <button className={route.page === 'home' ? 'active' : ''} onClick={() => go('')}>{t('nav.home')}</button>
+          <button className={route.page === 'codex' ? 'active' : ''} onClick={() => go('codex')}><Icon name="book" /> {t('nav.codex')}</button>
+          <button className={route.page === 'settings' ? 'active' : ''} onClick={() => go('settings')}><Icon name="gear" /> {t('nav.settings')}</button>
+        </nav>
       </header>
       {route.page === 'home' && <HomeScreen onPlay={(id) => go(`level/${id}`)} onSandbox={() => go('sandbox')} />}
       {route.page === 'level' && (() => {
@@ -82,6 +74,7 @@ export function App() {
       {route.page === 'custom' && (customLevel
         ? <Workbench level={customLevel} onExit={() => go('')} onGoto={() => go('')} />
         : <main className="home"><p className="empty">{t('custom.missing')}</p></main>)}
+      {route.page === 'settings' && <SettingsPage onStory={() => setStory(true)} />}
       {story && <Prologue onClose={() => setStory(false)} />}
     </div>
   );

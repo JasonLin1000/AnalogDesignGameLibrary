@@ -52,13 +52,16 @@ export const useProgress = create<ProgressState>((set, get) => ({
   reset: () => { set({ stars: {} }); save({ stars: {}, unlockAll: get().unlockAll }); },
 }));
 
+/** Tool tutorials and IP part-steps (all but the final assembly) do not gate chapter completion. */
+export const optionalLevel = (l: AnyLevel) => !!l.guide || (!!l.part && l.part.step < l.part.of);
+
 export const passed = (stars: Record<string, number>, id: string) => (stars[id] ?? 0) > 0;
 
 export function chapterComplete(stars: Record<string, number>, chapterId: number): boolean {
   const ch = CHAPTERS.find((c) => c.id === chapterId);
   if (!ch) return false;
-  // tool tutorials (levels with a guide) are optional for completing a chapter
-  return ch.levels.some((l) => l.skipTest && passed(stars, l.id)) || ch.levels.filter((l) => !l.guide).every((l) => passed(stars, l.id));
+  // tool tutorials and the part-steps of an IP track are optional: the assembled level is what counts
+  return ch.levels.some((l) => l.skipTest && passed(stars, l.id)) || ch.levels.filter((l) => !optionalLevel(l)).every((l) => passed(stars, l.id));
 }
 
 export function chapterUnlocked(stars: Record<string, number>, chapterId: number, all = false): boolean {

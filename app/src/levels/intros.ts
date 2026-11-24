@@ -11,7 +11,10 @@ export type Figure =
   | { lay: Layout; height?: number }
   | { keys: [string, Localized][] };
 
-export interface Slide { title: Localized; body: Localized; fig?: Figure; caption?: Localized }
+/** A multiple-choice concept check; the explanation shows after any answer. */
+export interface Quiz { options: Localized[]; answer: number; explain: Localized }
+
+export interface Slide { title: Localized; body: Localized; fig?: Figure; caption?: Localized; quiz?: Quiz }
 
 const k = (key: string, zh: string, en: string): [string, Localized] => [key, L(zh, en)];
 
@@ -211,6 +214,102 @@ export const INTROS: Record<string, Slide[]> = {
       body: L('這關的負載電流會在 0.1 µs 內從 1 mA 跳到 10 mA。輸出電容先撐住，迴路要夠快才能把電壓拉回來。運放的 GBW、傳輸管的大小（閘極電容）、輸出電容一起決定輸出晃多少。', 'In this level the load jumps from 1 mA to 10 mA within 0.1 µs. The output capacitor holds the line first; the loop must be fast enough to pull it back. The amplifier\'s GBW, the pass device size (gate capacitance) and the output capacitor together decide how far the output dips.'),
     },
   ],
+  // ---------------- IP tracks: two-stage op-amp ----------------
+  '5-1a': [
+    {
+      title: L('大 IP 要拆開來做', 'Build a big IP in parts'),
+      body: L(
+        '兩級運放分三步完成：①第二級增益級 ②Miller 補償 ③自己從頭組合。每一步只學一件事，前一步的成果就是下一步的積木。\n這一關先做第二級：PMOS M7 把 x1 的小訊號放大到 out，NMOS M8 是它的電流源負載。',
+        'The two-stage op-amp comes in three steps: ① the second gain stage, ② Miller compensation, ③ assemble it yourself. Each step teaches one thing, and each result is a building block for the next.\nThis level builds stage two: PMOS M7 amplifies the small signal at x1 onto out, and NMOS M8 is its current-source load.',
+      ),
+      fig: { sch: F.figSecondStage, values: false, height: 220 },
+      caption: L('第二級：M7 共源放大、M8 電流源負載。', 'Stage two: M7 common source, M8 current-source load.'),
+    },
+    {
+      title: L('小測驗', 'Quick check'),
+      body: L('想要更高的增益，最直接的作法是？', 'What is the most direct way to raise this stage\'s gain?'),
+      quiz: {
+        options: [L('把 M7、M8 的 L 加長', 'Lengthen M7 and M8'), L('把負載電容 CL 加大', 'Increase the load capacitance CL'), L('把電源電壓調低', 'Lower the supply voltage')],
+        answer: 0,
+        explain: L('增益 = gm·(ro7 ∥ ro8)，L 越長 ro 越大。CL 只影響頻寬，不影響低頻增益。', 'Gain = gm·(ro7 ∥ ro8), and a longer L raises ro. CL only affects bandwidth, not the low-frequency gain.'),
+      },
+    },
+  ],
+  '5-1b': [
+    {
+      title: L('第 2 步：補償', 'Step 2: compensation'),
+      body: L(
+        '第一級（5T OTA）和第二級已經接好。兩級各有一個極點，相位很快就掉到 −180°，接成回授會振盪。\n在 x1 和 out 之間跨一顆 Cc（串 Rz），把第一級極點拉低、第二級極點推高——這叫「極點分離」。',
+        'Stage one (a 5T OTA) and stage two are wired. Each stage has a pole, so the phase drops to −180° quickly and the amplifier would oscillate in feedback.\nBridging x1 and out with Cc (in series with Rz) pulls the first pole down and pushes the second up: pole splitting.',
+      ),
+      fig: { sch: F.figTwoStage, values: false, height: 280 },
+      caption: L('你要補上的是中間的 Rz 和 Cc。', 'What you add is Rz and Cc in the middle.'),
+    },
+    {
+      title: L('小測驗', 'Quick check'),
+      body: L('Cc 加大，會發生什麼事？', 'What happens when Cc grows?'),
+      quiz: {
+        options: [L('更穩定（相位邊限變大），但頻寬變小', 'More stable (more phase margin) but less bandwidth'), L('頻寬變大、相位邊限變小', 'More bandwidth, less phase margin'), L('直流增益變大', 'Higher DC gain')],
+        answer: 0,
+        explain: L('GBW ≈ gm1 / Cc：Cc 越大越慢、但越穩。直流增益不受 Cc 影響。', 'GBW ≈ gm1 / Cc: a bigger Cc is slower but more stable. The DC gain does not depend on Cc.'),
+      },
+    },
+  ],
+  // ---------------- IP tracks: bandgap ----------------
+  '6-1a': [
+    {
+      title: L('能隙參考電壓：三步完成', 'The bandgap in three steps'),
+      body: L(
+        '① CTAT：隨溫度下降的 VEB ② PTAT：隨溫度上升的 ΔVEB ③ 用運放和兩顆電阻把它們按比例相加，得到不隨溫度變化的 1.2 V。\n這一關先看 CTAT：放一個電流源偏壓 Q1，然後看下方 VEB 對溫度的曲線——它是一條往下的斜線。',
+        '① CTAT: VEB, which falls with temperature; ② PTAT: ΔVEB, which rises; ③ an op-amp and two resistors add them in the right ratio for a temperature-independent 1.2 V.\nThis level looks at CTAT: bias Q1 with a current source and watch VEB versus temperature below — a falling line.',
+      ),
+    },
+    {
+      title: L('小測驗', 'Quick check'),
+      body: L('偏壓電流變成 10 倍，VEB 大約會？', 'If the bias current grows tenfold, VEB roughly…'),
+      quiz: {
+        options: [L('增加約 60 mV', 'rises by about 60 mV'), L('變成 10 倍', 'becomes ten times larger'), L('不變', 'stays the same')],
+        answer: 0,
+        explain: L('VEB = VT·ln(I/Is)，ln(10)·26 mV ≈ 60 mV。所以 VEB 對電流不敏感，很適合當參考。', 'VEB = VT·ln(I/Is), and ln(10)·26 mV ≈ 60 mV. VEB is insensitive to current, which makes it a good reference.'),
+      },
+    },
+  ],
+  '6-1b': [{
+    title: L('第 2 步：PTAT', 'Step 2: PTAT'),
+    body: L(
+      'Q2 有 8 個 Q1 那麼大。同樣的電流分到 8 倍面積，電流密度只有 1/8，VEB 就小一點。差值 ΔVEB = VT·ln 8 ≈ 54 mV，和絕對溫度 T 成正比。\n下方會畫出 a 和 c2 兩條線：溫度越高，兩條線離得越開。',
+      'Q2 is eight times the size of Q1. The same current over eight times the area means 1/8 the density, so its VEB is a little smaller. The difference ΔVEB = VT·ln 8 ≈ 54 mV is proportional to absolute temperature T.\nThe plot shows a and c2: the hotter it gets, the further apart they move.',
+    ),
+  }],
+  // ---------------- IP tracks: LDO ----------------
+  '6-2a': [
+    {
+      title: L('LDO：三步完成', 'The LDO in three steps'),
+      body: L(
+        '① 傳輸管：夠大才能供電流 ② 回授迴路：把輸出穩在 1.2 V ③ 負載突然變化時也要撐住（本章的跳級測驗）。\n這一關閘極接 0 V，傳輸管全開，只看它能不能在 10 mA 時維持夠小的壓降。',
+        '① The pass device: big enough to deliver the current; ② the feedback loop: hold the output at 1.2 V; ③ survive a sudden load change (the chapter\'s skip test).\nHere the gate sits at 0 V so the pass device is fully on; the only question is whether it keeps the dropout small at 10 mA.',
+      ),
+      fig: { sch: F.figLdo, values: false, height: 240 },
+      caption: L('完整的 LDO。這一關只做右上角的 MPASS。', 'The complete LDO. This level builds only MPASS at the top right.'),
+    },
+    {
+      title: L('小測驗', 'Quick check'),
+      body: L('哪個情況下，PMOS 傳輸管最難供出 10 mA？', 'When does the PMOS pass device struggle most to deliver 10 mA?'),
+      quiz: {
+        options: [L('慢速 PMOS（ss / sf）、低溫 −40 °C', 'Slow PMOS (ss / sf) at −40 °C'), L('快速 corner、高溫', 'Fast corner, high temperature'), L('都一樣', 'All the same')],
+        answer: 0,
+        explain: L('低溫時 Vth 變高，閘極能用的過驅動電壓變少；慢速 corner 的遷移率又更低。', 'At low temperature Vth rises, leaving less gate overdrive, and the slow corner has lower mobility on top.'),
+      },
+    },
+  ],
+  '6-2b': [{
+    title: L('第 2 步：回授', 'Step 2: feedback'),
+    body: L(
+      '分壓器把 1.2 V 縮成 0.9 V（= vref）。誤差放大器看到 fb 比 vref 高，就把閘極拉高、讓 PMOS 少導通一點；反之亦然——輸出被「鎖」在 1.2 V。\n誤差大小取決於迴路增益，所以 A0 越大越準。',
+      'The divider scales 1.2 V down to 0.9 V (= vref). When the error amplifier sees fb above vref it raises the gate so the PMOS conducts less, and vice versa: the output is locked at 1.2 V.\nThe residual error depends on the loop gain, so a larger A0 is more accurate.',
+    ),
+    fig: { sch: F.figLdo, values: false, height: 240 },
+  }],
   // ---------------- chapter 7: layout ----------------
   '7-0': [
     {
@@ -288,3 +387,68 @@ export const INTROS: Record<string, Slide[]> = {
     caption: L('O O R O O：參考管在中間。', 'O O R O O: the reference finger in the middle.'),
   }],
 };
+
+// ---------------- concept checks appended to a level's cards ----------------
+const q = (zh: string, en: string, options: [string, string][], answer: number, ezh: string, een: string): Slide => ({
+  title: L('小測驗', 'Quick check'),
+  body: L(zh, en),
+  quiz: { options: options.map(([a, b]) => L(a, b)), answer, explain: L(ezh, een) },
+});
+
+const QUIZZES: Record<string, Slide> = {
+  '0-1': q('12 V 電源接一顆 4 kΩ 電阻，電流是多少？', 'A 12 V source across 4 kΩ drives how much current?',
+    [['3 mA', '3 mA'], ['48 mA', '48 mA'], ['0.33 mA', '0.33 mA']], 0, 'I = V ÷ R = 12 ÷ 4000 = 3 mA。', 'I = V ÷ R = 12 ÷ 4000 = 3 mA.'),
+  '0-2': q('5 V 電源、紅色 LED（1.8 V），想要 10 mA，電阻上的電壓是？', '5 V supply, red LED (1.8 V), 10 mA wanted. What voltage sits across the resistor?',
+    [['3.2 V', '3.2 V'], ['5 V', '5 V'], ['1.8 V', '1.8 V']], 0, '剩下的電壓 5 − 1.8 = 3.2 V 都落在電阻上，所以 R = 3.2 V ÷ 10 mA。', 'The rest, 5 − 1.8 = 3.2 V, falls across the resistor, so R = 3.2 V ÷ 10 mA.'),
+  '1-1': q('分壓器的兩顆電阻同時放大 10 倍，輸出電壓會？', 'If both divider resistors are scaled up 10×, the output voltage…',
+    [['不變，但電流變成 1/10', 'stays the same, with 1/10 the current'], ['變成 10 倍', 'becomes 10× larger'], ['變成 1/10', 'becomes 1/10']], 0, '輸出只看比例 R2/(R1+R2)；絕對值決定耗電。', 'The output depends only on the ratio R2/(R1+R2); the absolute values set the power.'),
+  '1-3': q('RC 低通的 R 加倍，−3 dB 頻率會？', 'Doubling R in an RC low-pass moves the −3 dB frequency…',
+    [['變成一半', 'to half'], ['變成兩倍', 'to double'], ['不變', 'nowhere']], 0, 'f = 1 / (2πRC)，R 加倍 → f 減半。', 'f = 1 / (2πRC): double R, half f.'),
+  '2-3': q('閘極電壓固定，W 加倍、L 不變，飽和區電流會？', 'With a fixed gate voltage, doubling W at the same L makes the saturation current…',
+    [['約加倍', 'about double'], ['約減半', 'about half'], ['變成 4 倍', 'four times larger']], 0, 'I ∝ W/L，W 加倍 → 電流加倍。', 'I ∝ W/L: double W, double the current.'),
+  '3-1': q('電流鏡 M1 是 W = 2 µm，想讓 M2 輸出 3 倍的電流（L 相同），M2 的 W 要？', 'Mirror M1 has W = 2 µm. For three times the current in M2 (same L), M2\'s W should be…',
+    [['6 µm', '6 µm'], ['0.67 µm', '0.67 µm'], ['2 µm', '2 µm']], 0, 'Iout / Iref = (W/L)₂ / (W/L)₁。', 'Iout / Iref = (W/L)₂ / (W/L)₁.'),
+  '3-2': q('共源放大器的增益是正的還是負的？', 'Is the common-source amplifier\'s gain positive or negative?',
+    [['負的（反相）', 'Negative (inverting)'], ['正的', 'Positive'], ['看偏壓', 'Depends on the bias']], 0, '輸入上升 → 電流變大 → RD 上壓降變大 → 輸出下降。', 'Input up → more current → more drop across RD → output down.'),
+  '4-1': q('差動對兩個輸入同時上升 10 mV，理想上輸出差會？', 'Both diff-pair inputs rise by 10 mV together. Ideally the output difference…',
+    [['不變', 'stays the same'], ['變大', 'grows'], ['變號', 'changes sign']], 0, '差動對只放大兩輸入的「差」，共模變化被尾電流擋掉。', 'A differential pair amplifies only the difference; the tail current blocks common-mode changes.'),
+  '4-2': q('5T OTA 的 UGB 大約是？', 'The 5T OTA\'s unity-gain bandwidth is roughly…',
+    [['gm1 / (2π·CL)', 'gm1 / (2π·CL)'], ['gm1 · ro', 'gm1 · ro'], ['1 / (2π·R·C)', '1 / (2π·R·C)']], 0, 'A0 = gm1·(ro2∥ro4)、極點 1/(2π·ro·CL)，相乘得 UGB ≈ gm1/(2πCL)。', 'A0 = gm1·(ro2∥ro4) times a pole at 1/(2π·ro·CL) gives UGB ≈ gm1/(2πCL).'),
+  '5-1': q('第二級為什麼讓 vp 接 M2、vn 接 M1？', 'Why does vp go to M2 and vn to M1 here?',
+    [['第二級會反相，要把整體極性轉回來', 'Stage two inverts, so the overall polarity must be restored'], ['M2 比較大', 'M2 is larger'], ['隨便接都可以', 'Either way works']], 0, '從 M2 閘極到 x1 是反相，第二級再反相一次，整體就是同相：vp 才是真正的 + 端。', 'M2\'s gate to x1 inverts and stage two inverts again, so overall it is non-inverting: vp is the true + input.'),
+  '6-1': q('Vref 隨溫度往上翹，R2 應該？', 'Vref tilts upward with temperature. R2 should…',
+    [['調小（PTAT 太多）', 'shrink (too much PTAT)'], ['調大', 'grow'], ['不用動', 'stay as is']], 0, 'PTAT 項 = (R2/R1)·VT·ln8，R2 越大往上翹越多。', 'The PTAT term is (R2/R1)·VT·ln8: a larger R2 tilts it up more.'),
+  '6-2': q('LDO 的輸出電容越大，負載步階時？', 'A larger LDO output capacitor during a load step…',
+    [['電壓跌得較少，但迴路要多花時間拉回', 'dips less, but the loop takes longer to recover'], ['完全不會跌', 'never dips'], ['跌得更多', 'dips more']], 0, '電容先供應瞬間的電流差：ΔV ≈ ΔI·Δt / C。', 'The capacitor supplies the instantaneous current difference: ΔV ≈ ΔI·Δt / C.'),
+  '7-1': q('poly 的寬度決定電晶體的？', 'The poly width sets the transistor\'s…',
+    [['L（通道長度）', 'L (channel length)'], ['W（通道寬度）', 'W (channel width)'], ['臨界電壓', 'threshold voltage']], 0, '電流從源極穿過 poly 底下流到汲極，所以穿越的距離 = poly 寬 = L。', 'Current crosses under the poly from source to drain, so the distance crossed — the poly width — is L.'),
+  '8-1': q('A B B A 排法為什麼能抵消線性梯度？', 'Why does an A B B A pattern cancel a linear gradient?',
+    [['A 和 B 的平均位置（重心）相同', 'A and B share the same average position (centroid)'], ['A 和 B 比較靠近', 'A and B sit closer together'], ['finger 比較多', 'There are more fingers']], 0, '線性梯度下，參數 = 位置的線性函數；重心相同 → 平均值相同。', 'Under a linear gradient a parameter is linear in position: equal centroids give equal averages.'),
+  '9-1': q('同一條 met1 線，寬度加倍、長度不變，電阻會？', 'The same met1 line, twice as wide and just as long, has a resistance that…',
+    [['變成一半', 'halves'], ['加倍', 'doubles'], ['不變', 'stays the same']], 0, 'R = R□ × L / W。', 'R = R□ × L / W.'),
+};
+for (const [id, slide] of Object.entries(QUIZZES)) (INTROS[id] ??= []).push(slide);
+
+// The last step of each IP track opens with a recap of the parts.
+const ASSEMBLE: Record<string, Slide> = {
+  '5-1': {
+    title: L('第 3 步：全部組合', 'Step 3: assemble it all'),
+    body: L(
+      '你已經做過第一級（4-2 的 5T OTA）、第二級（5-1a）和補償（5-1b）。這一關畫布是空的：從偏壓、輸入對、主動負載、第二級到 Rz / Cc，全部自己接起來，並在每個 corner 都穩定。',
+      'You have built stage one (the 5T OTA in 4-2), stage two (5-1a) and the compensation (5-1b). This time the canvas is empty: wire the bias, input pair, active load, stage two and Rz / Cc yourself, and keep it stable at every corner.',
+    ),
+    fig: { sch: F.figTwoStage, values: false, height: 280 },
+  },
+  '6-1': {
+    title: L('第 3 步：CTAT + PTAT', 'Step 3: CTAT + PTAT'),
+    body: L(
+      '運放讓 a 和 b 等電位，所以 R1 兩端剛好是 ΔVEB（PTAT），流過的電流 I = ΔVEB / R1。三顆 PMOS 把這個電流複製到右邊，流過 R2 產生 (R2/R1)·ΔVEB，再疊在 Q3 的 VEB（CTAT）上。選對 R2/R1，兩個斜率就抵消了。',
+      'The op-amp holds a and b equal, so R1 carries exactly ΔVEB (PTAT) and a current I = ΔVEB / R1. Three PMOS copy that current to the right, where R2 turns it into (R2/R1)·ΔVEB on top of Q3\'s VEB (CTAT). Pick R2/R1 right and the slopes cancel.',
+    ),
+  },
+  '6-2': {
+    title: L('第 3 步：組合並面對負載步階', 'Step 3: assemble and face the load step'),
+    body: L('把傳輸管（6-2a）和回授迴路（6-2b）組在一起。這次負載會在 0.1 µs 內從 1 mA 跳到 10 mA，要看暫態波形：迴路夠快，輸出才不會晃出 1.1–1.3 V。', 'Put the pass device (6-2a) and the feedback loop (6-2b) together. This time the load jumps from 1 mA to 10 mA within 0.1 µs, so watch the transient: only a fast enough loop keeps the output within 1.1–1.3 V.'),
+  },
+};
+for (const [id, slide] of Object.entries(ASSEMBLE)) (INTROS[id] ??= []).unshift(slide);

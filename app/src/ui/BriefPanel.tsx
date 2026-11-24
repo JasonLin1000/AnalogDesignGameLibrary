@@ -10,6 +10,7 @@ import { formatEng } from '../schematic/units';
 import { toCircuit } from '../schematic/connectivity';
 import { GuidePanel } from './GuidePanel';
 import { Icon, Mentor } from './Icon';
+import { IpStepper } from './IpStepper';
 
 export function fmtValue(v: number, unit = '') {
   if (!Number.isFinite(v)) return '—';
@@ -69,6 +70,7 @@ export function BriefPanel({ level, best, onIntro }: { level: Level; best: numbe
         <h2>{L(level.title)}</h2>
         <Stars n={best} max={maxStars(level)} />
       </div>
+      {level.part && <IpStepper levelId={level.id} part={level.part} onGo={(id) => { location.hash = `level/${id}`; }} />}
       {onIntro && <button className="intro-btn" onClick={onIntro}><Icon name="cards" size={15} /> {t('intro.open')}</button>}
       <div className="mentor">
         <span className="avatar"><Mentor size={36} /></span>

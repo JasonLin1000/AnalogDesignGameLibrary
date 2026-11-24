@@ -74,6 +74,12 @@ describe('tutorial figures are wired as drawn', () => {
     expect(N('CL', 'p')).toBe('out');
   });
 
+  it('second stage', () => {
+    const N = nets(F.figSecondStage);
+    expect(N('M7', 's')).toBe('vdd'); expect(N('M7', 'g')).toBe('x1'); expect(N('M7', 'd')).toBe('out');
+    expect(N('M8', 'd')).toBe('out'); expect(N('M8', 'g')).toBe('nbias'); expect(N('M8', 's')).toBe('0');
+  });
+
   it('LDO', () => {
     const N = nets(F.figLdo);
     expect(N('U1', 'inp')).toBe('fb'); expect(N('U1', 'inn')).toBe('vref'); expect(N('U1', 'out')).toBe('vg');

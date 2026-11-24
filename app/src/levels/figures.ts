@@ -208,3 +208,13 @@ export const figWires: Layout = {
   labels: [tx('met1', '0.14 µm', 4000, 70), tx('met1', '2 µm', 4000, 1800)],
   instances: [],
 };
+
+/** Second stage of the two-stage op-amp: PMOS common source M7 with NMOS current-source load M8. */
+export const figSecondStage: Schematic = {
+  parts: [part('PFET', 'M7', 0, -6), part('NFET', 'M8', 0, 3), gnd(2, 6)],
+  wires: [
+    w(2, -9, 2, -11), w(-3, -6, -6, -6), w(-3, 3, -6, 3),
+    w(2, -3, 2, -1), w(2, -1, 2, 0), w(2, -1, 6, -1),
+  ],
+  labels: [lb('vdd', 2, -11), lb('x1', -6, -6), lb('nbias', -6, 3), lb('out', 6, -1)],
+};

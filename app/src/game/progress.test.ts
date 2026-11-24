@@ -19,3 +19,16 @@ describe('unlocking around the inserted tool tutorials', () => {
     expect(levelUnlocked({ ...old, '6-1': 1, '6-2': 1 }, findLevel('7-1')!, false)).toBe(true);
   });
 });
+
+describe('IP part-steps', () => {
+  it('old progress that finished chapter 5 keeps it complete without the new part levels', () => {
+    expect(chapterComplete({ '5-1': 2, '5-2': 1 }, 5)).toBe(true);
+    expect(levelUnlocked({ '4-3': 1, '5-1': 1 }, findLevel('5-1')!)).toBe(true);
+  });
+  it('a new player walks the parts in order', () => {
+    const s = { '4-1': 1, '4-2': 1, '4-3': 1 };
+    expect(levelUnlocked(s, findLevel('5-1a')!)).toBe(true);
+    expect(levelUnlocked(s, findLevel('5-1b')!)).toBe(false);
+    expect(levelUnlocked({ ...s, '5-1a': 1 }, findLevel('5-1b')!)).toBe(true);
+  });
+});

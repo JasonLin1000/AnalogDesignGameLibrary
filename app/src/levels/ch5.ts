@@ -1,6 +1,7 @@
 import { C, L, Lb, P, X, sch } from './build';
 import { ota5t } from './ch4';
 import type { Chapter } from './types';
+import { compensationLevel, secondStageLevel, twoStagePart } from './ch5parts';
 import type { LogicalPart } from '../schematic/types';
 
 // Open-loop test bench with DC feedback: L (1 TH) closes the loop at DC so the op-amp biases
@@ -43,8 +44,10 @@ export const ch5: Chapter = {
     'One stage isn\'t enough, so cascade two — but every stage adds a pole, and with feedback the circuit may oscillate. Learn Miller compensation, phase margin, and the last wall of precision circuits: noise.',
   ),
   levels: [
+    secondStageLevel,
+    compensationLevel,
     {
-      id: '5-1', chapter: 5,
+      id: '5-1', chapter: 5, part: twoStagePart(3),
       title: L('兩級 Miller 運放', 'Two-stage Miller op-amp'),
       story: L(
         '客戶要 60 dB 以上的增益，一顆 5T OTA 辦不到。加上第二級共源放大，再用一顆電容把兩個極點「拉開」，讓它接成回授時不會振盪。',
