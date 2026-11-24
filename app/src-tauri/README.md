@@ -10,7 +10,7 @@ The desktop app wraps the same web build (`../dist`) in a native window; nothing
 
 What the installer does:
 
-- Language picker (繁體中文 / English), license page (Apache-2.0), then a choice to install for the current user only (no admin prompt, `%LOCALAPPDATA%\Analog Design Lab`) or for everyone (`C:\Program Files\Analog Design Lab`).
+- Language picker (繁體中文 / English), license page (Apache-2.0), then a choice to install for the current user only (no admin prompt, `%LOCALAPPDATA%\Programs\Analog Design Lab`) or for everyone (`C:\Program Files\Analog Design Lab`).
 - Start-menu folder "Analog Design Lab", optional desktop shortcut on the last page.
 - Installs WebView2 if missing (Windows 11 already has it).
 - Registers in Settings → Apps → Installed apps, so it can be removed there or with `uninstall.exe` in the install folder. The uninstaller offers to also delete saved progress (WebView data under `%LOCALAPPDATA%\org.analogdesigngame.lab`).
