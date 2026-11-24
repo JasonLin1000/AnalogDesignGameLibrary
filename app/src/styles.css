@@ -70,7 +70,9 @@ kbd { font: 600 calc(11px * var(--fs)) var(--mono); background: var(--panel); bo
 .logo { display: block; }
 
 /* ---------- home ---------- */
-.home { overflow: auto; padding: 32px 18px 56px; max-width: 1080px; margin: 0 auto; width: 100%; }
+/* Full-width scroll area (wheel works anywhere) with the content centred by padding; the scrollbar itself is hidden. */
+.home { --page: 1040px; overflow: auto; padding: 32px max(18px, calc((100% - var(--page)) / 2 + 18px)) 56px; width: 100%; scrollbar-width: none; }
+.home::-webkit-scrollbar { display: none; }
 .hero { padding: 16px 0 28px; }
 .hero h1 { font-size: calc(34px * var(--fs)); line-height: 1.2; }
 .hero p { color: var(--muted); max-width: 720px; font-size: calc(15px * var(--fs)); }
@@ -405,7 +407,6 @@ td.ok, span.ok { color: var(--ok); } td.bad, span.bad { color: var(--bad); }
 .hint-btn { color: var(--ink); }
 
 /* ---------- home: current mission, rank, chapter map ---------- */
-.home { max-width: 1040px; }
 .eyebrow { margin: 0 0 6px; font-size: calc(13px * var(--fs)); color: var(--accent-strong); font-weight: 600; letter-spacing: .02em; }
 .mission { display: grid; grid-template-columns: minmax(0, 1fr) 240px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; margin-bottom: 28px; }
 .mission-main { padding: 28px 32px 30px; border-left: 5px solid var(--accent); }
