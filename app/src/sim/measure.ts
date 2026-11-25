@@ -284,3 +284,12 @@ function need(p: Plot | null, analysis: string): Plot {
   return p;
 }
 
+
+/** A saved operating-point vector of a part (e.g. 'i', 'id'), or undefined if it is not there. */
+export function partOpVec(res: SimResult, partName: string, key: string): number | undefined {
+  try {
+    const p = pickPart(res, partName);
+    const name = res.opVectors[p.name]?.[key];
+    return name ? opVec(res, name) : undefined;
+  } catch { return undefined; }
+}

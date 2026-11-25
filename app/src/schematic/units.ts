@@ -32,3 +32,22 @@ export function formatEng(v: number, unit = '', digits = 3): string {
   }
   return `${v.toExponential(2)} ${unit}`.trim();
 }
+
+const SPICE_SUFFIX: [number, string][] = [
+  [1e12, 't'], [1e9, 'g'], [1e6, 'meg'], [1e3, 'k'], [1, ''], [1e-3, 'm'], [1e-6, 'u'], [1e-9, 'n'], [1e-12, 'p'], [1e-15, 'f'],
+];
+
+/** 1250 -> "1.25k", 4.7e-6 -> "4.7u" (SPICE suffixes: m = milli, meg = mega). */
+export function toSpice(v: number, digits = 3): string {
+  if (!Number.isFinite(v)) return String(v);
+  if (v === 0) return '0';
+  const a = Math.abs(v);
+  for (const [s, suf] of SPICE_SUFFIX) if (a >= s * 0.9995) return `${Number((v / s).toPrecision(digits))}${suf}`;
+  return v.toExponential(2);
+}
+
+/** Scale a SPICE value string by `f`, keeping 3 significant digits ("1k" x 1.25 -> "1.25k"). */
+export function scaleSpice(s: string, f: number): string | null {
+  const v = parseSpice(s);
+  return Number.isFinite(v) && v !== 0 ? toSpice(v * f) : null;
+}

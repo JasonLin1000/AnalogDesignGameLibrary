@@ -3,6 +3,7 @@ import { nextLevel, useProgress } from '../game/progress';
 import { useSession } from '../game/session';
 import { useT } from '../i18n';
 import { sfx } from '../game/sfx';
+import { useView } from '../game/settings';
 import type { Level } from '../levels/types';
 import { SchematicCanvas } from '../schematic/SchematicCanvas';
 import { useEditor } from '../schematic/store';
@@ -42,6 +43,7 @@ export function Workbench({ level, onExit, onGoto }: { level: Level | null; onEx
     session.reset((level?.plots ?? []).map((p) => ({ analysis: p.analysis, node: p.node, show: p.show })));
     setSuccess(null);
     setIntro(!!level && hasIntro(level.id) && !introSeen(level.id));
+    lastRun.current = useEditor.getState().version; // live mode waits for the first edit
   }, [docKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // autosave drafts (per-viewer convenience)
@@ -62,12 +64,26 @@ export function Workbench({ level, onExit, onGoto }: { level: Level | null; onEx
       const kind = analyses.find((a) => a.kind !== 'op' && a.kind !== 'noise')?.kind;
       if (kind) for (const l of ed.sch.labels) s.addProbe({ analysis: kind, node: l.name.toLowerCase(), show: kind === 'ac' ? 'db' : 'v' });
     }
-    if (level && s.status === 'done' && s.score && s.score.stars === 0) sfx.fail();
+    if (level && s.status === 'done' && s.score && s.score.stars === 0 && !useView.getState().live) sfx.fail();
     if (level && s.score && s.score.stars > 0) {
+      const before = useProgress.getState().stars[level.id] ?? 0;
       progress.record(level.id, s.score.stars);
-      setSuccess(s.score.stars);
+      // in live mode only interrupt the player for a new best, not on every tweak
+      if (!useView.getState().live || s.score.stars > before) setSuccess(s.score.stars);
     }
   };
+
+  // live mode: re-simulate shortly after every edit (EveryCircuit-style instant feedback)
+  const live = useView((v) => v.live);
+  const runRef = useRef(run);
+  runRef.current = run;
+  useEffect(() => {
+    if (!live || ed.version === lastRun.current || success !== null || intro) return;
+    const id = setTimeout(() => {
+      if (useSession.getState().status !== 'running') void runRef.current();
+    }, 650);
+    return () => clearTimeout(id);
+  }, [live, ed.version, session.status, success, intro]);
 
   const restart = () => {
     if (!confirm(t('wb.restartConfirm'))) return;

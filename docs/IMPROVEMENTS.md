@@ -1,0 +1,40 @@
+# 類似專案調查與改進清單
+
+2026-11 調查。目的：找出同類型的模擬器、電路解謎遊戲與開源課程，整理值得借鏡的地方，轉成本專案的改進項目。
+
+## 參考對象
+
+| 專案 | 類型 | 值得學的地方 |
+|---|---|---|
+| [Falstad / CircuitJS](https://www.falstad.com/circuit/) | 瀏覽器電路模擬器 | 黃色光點沿導線流動表示電流，速度正比電流大小；導線顏色代表電壓。最直覺的「看見電路」方式，教學現場常用。 |
+| [EveryCircuit](https://everycircuit.com/) | 模擬器 App | 電流光點、LED 漸亮；**模擬中可直接調旋鈕**，電路立即反應；MOSFET 符號內直接顯示線性區／飽和區。 |
+| [Spicey Electrons](https://dev.to/open-madscience/spicey-electrons-57gg) | ngspice + 動畫 | 和本專案最像（ngspice WASM），用 KCL 從元件電流推算每段導線電流再做動畫。 |
+| [Turing Complete](https://store.steampowered.com/app/1444480/Turing_Complete) | 數位邏輯解謎遊戲 | 從單一元件（NAND）一路堆到 CPU，每關沿用前面做出的東西；進度曲線平順，並有沙盒。 |
+| [Silicon Zeroes](https://pleasingfungus.itch.io/silicon-zeroes) | 電路解謎遊戲 | 反例：玩家批評第一到第二關難度跳太大——難度曲線與工具提示要細。 |
+| [Opus Magnum / Zachtronics](https://biggieblog.com/tracking-the-global-opus-magnum-records/) | 最佳化解謎 | 過關後用直方圖比較成本／週期／面積等多項指標，讓「過關之後」還有最佳化的動機。 |
+| [UNIC-CASS SKY130 training](https://unic-cass.github.io/training/sky130)、[Hasler 的開源類比 IC 課](https://hasler.ece.gatech.edu/Courses/GLSVLSI_MSE_2022.pdf) | 開源類比課程 | 用 xschem + ngspice + SKY130 的完整流程（含 Monte Carlo、layout），但都是教材不是遊戲——本專案的定位剛好補上這塊。 |
+| [Tiny Tapeout](https://tinytapeout.com/) | 開源下線計畫 | 讓學習者真的把設計送去製造；可作為畢業專題之後的「下一步」連結。 |
+
+結論：瀏覽器 SPICE 工具很多但不是遊戲；解謎遊戲多半是數位邏輯；**以 SKY130 真實模型做類比 IC 的遊戲化課程**目前找不到同類，是本專案的空位。
+
+## 改進清單
+
+### 已在 0.7.0-beta.1 實作
+
+1. **電流動畫＋電壓著色**（Falstad、EveryCircuit、Spicey Electrons）
+   模擬後光點沿導線流動，方向為傳統電流方向，速度依電流大小（1 nA → 慢，10 mA → 快）；導線依節點電壓著色（0 V 原色、最高電壓最紅、負電壓藍）。工具列「電流動畫」開關，預設開啟；尊重「減少動態效果」系統設定。
+   做法：元件給出每個接腳流入的電流（OP 向量），每個導線連通塊用 KCL 解出唯一未知（接地、運放輸出），再沿生成樹算每段導線電流（`schematic/flow.ts`，有單元測試）。
+2. **即時模擬＋數值微調**（EveryCircuit 的即時旋鈕）
+   工具列「即時模擬」開關：每次修改電路 0.65 秒後自動重跑模擬。選取元件按 `[` / `]` 把主要數值（電阻值、電容值、電源電壓、MOS 的 W …）乘以 0.8 / 1.25，搭配即時模擬就像在轉旋鈕。即時模式下只有刷新最佳紀錄才跳出過關視窗，失敗音效關閉，不打斷調整。
+3. **規格餘裕量表＋趨勢箭頭**（Zachtronics 的指標回饋）
+   每條規格下方的小量表：中線是規格門檻，綠色往右代表還有多少餘裕，紅色往左代表還差多少。數值旁的 ▲／▼ 表示這次比上次更接近或更遠離目標。
+
+### 之後的候選項目
+
+4. **過關後的設計比較圖**（Opus Magnum 直方圖）：用參考解答（測試已驗證）畫出「功耗 vs 增益」等散佈圖，標出玩家的設計位置，鼓勵追求更好的取捨。
+5. **每日挑戰／複習題**：從已過關的章節抽小測驗或變形題（例如換規格），配合間隔複習，維持學習記憶。
+6. **成就系統**：例如「第一次讓 MOS 進入飽和區」「用最少元件過關」「PVT 全角落通過」，補足星星以外的目標。
+7. **分享關卡連結**：自訂關卡目前用檔案匯入匯出，可改成把關卡 JSON 壓縮進網址，一鍵分享。
+8. **觸控與平板操作**：雙指縮放、長按當右鍵，方便課堂上用平板。
+9. **波形游標量測**：在波形圖上放兩個游標讀差值（EveryCircuit 示波器功能），對暫態與 AC 關卡很有用。
+10. **Tiny Tapeout 連結**：畢業專題後提供「把類比設計真的下線」的延伸閱讀。

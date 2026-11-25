@@ -27,9 +27,26 @@ export function fmtTarget(s: Spec) {
   return '';
 }
 
-function SpecRow({ spec, r, stale }: { spec: Spec; r?: SpecResult; stale: boolean }) {
+/** How comfortably a value meets a spec: > 0 inside (1 = a full target-width of room), < 0 outside. */
+export function specMargin(spec: Spec, v: number): number | null {
+  if (!Number.isFinite(v)) return null;
+  const { min, max } = spec;
+  if (min !== undefined && max !== undefined) {
+    const half = (max - min) / 2 || 1;
+    return v < min ? (v - min) / half : v > max ? (max - v) / half : Math.min(v - min, max - v) / half;
+  }
+  if (min !== undefined) return (v - min) / (Math.abs(min) || 1);
+  if (max !== undefined) return (max - v) / (Math.abs(max) || 1);
+  return null;
+}
+
+function SpecRow({ spec, r, stale, prev }: { spec: Spec; r?: SpecResult; stale: boolean; prev?: number }) {
   const { t, L } = useT();
   const state = !r || stale ? 'pending' : r.pass ? 'pass' : 'fail';
+  const m = r && !stale && !r.error ? specMargin(spec, r.value) : null;
+  const pm = prev !== undefined ? specMargin(spec, prev) : null;
+  const trend = m !== null && pm !== null && Math.abs(m - pm) > 1e-3 ? (m > pm ? 'up' : 'down') : null;
+  const fill = m === null ? 0 : Math.max(-1, Math.min(1, m)); // -1..1, drawn around the centre line
   return (
     <li className={`spec ${state}`}>
       <span className="spec-icon" aria-hidden="true">{state === 'pass' ? <Icon name="check" size={14} /> : state === 'fail' ? <Icon name="close" size={14} /> : <span className="dot" />}</span>
@@ -39,6 +56,12 @@ function SpecRow({ spec, r, stale }: { spec: Spec; r?: SpecResult; stale: boolea
         <span className="spec-value">
           {r.error ? t(`merr.${r.error.code}` as MessageKey, r.error.vars) : fmtValue(r.value, spec.unit)}
           {r.worstLabel && r.values && r.values.length > 1 && <span className="worst"> {t('spec.worstAt', { label: r.worstLabel })}</span>}
+          {trend && <span className={`trend ${trend}`} title={t(trend === 'up' ? 'spec.toward' : 'spec.away')} aria-label={t(trend === 'up' ? 'spec.toward' : 'spec.away')}>{trend === 'up' ? '▲' : '▼'}</span>}
+        </span>
+      )}
+      {m !== null && (
+        <span className="gauge" title={t('spec.margin', { pct: Math.round(m * 100) })} aria-hidden="true">
+          <span className={`gauge-fill ${fill >= 0 ? 'in' : 'out'}`} style={fill >= 0 ? { left: '50%', width: `${fill * 50}%` } : { right: '50%', width: `${-fill * 50}%` }} />
         </span>
       )}
       <span className="sr-only">{state === 'pass' ? t('spec.pass') : state === 'fail' ? t('spec.fail') : t('spec.pending')}</span>
@@ -63,6 +86,14 @@ export function BriefPanel({ level, best, onIntro }: { level: Level; best: numbe
   const score = s.score;
   const sch = useEditor((e) => e.sch);
   const circuit = useMemo(() => (level.guide ? toCircuit(sch).circuit : null), [sch, level.guide]);
+  // previous run's values, for the "closer / further than last time" arrows
+  const hist = useMemo(() => ({ score: null as unknown, prev: {} as Record<string, number>, cur: {} as Record<string, number> }), [level.id]);
+  if (score && hist.score !== score) {
+    const cur: Record<string, number> = {};
+    level.specs.forEach((sp, i) => { const r = score.main[i]; if (r && !r.error) cur[sp.id] = r.value; });
+    level.stars?.forEach((tier, k) => tier.forEach((sp, i) => { const r = score.bonus[k]?.[i]; if (r && !r.error) cur[sp.id] = r.value; }));
+    hist.prev = hist.cur; hist.cur = cur; hist.score = score;
+  }
   return (
     <aside className="brief" aria-label={t('brief.title')}>
       <div className="brief-head">
@@ -84,13 +115,13 @@ export function BriefPanel({ level, best, onIntro }: { level: Level; best: numbe
 
       <h3>{t('brief.specs')} <span className="muted">★</span></h3>
       <ul className="specs">
-        {level.specs.map((sp, i) => <SpecRow key={sp.id} spec={sp} r={score?.main[i]} stale={stale} />)}
+        {level.specs.map((sp, i) => <SpecRow key={sp.id} spec={sp} r={score?.main[i]} stale={stale} prev={hist.prev[sp.id]} />)}
       </ul>
       {level.stars?.map((tier, k) => (
         <div key={k}>
           <h3 className="bonus">{t('brief.bonus')} <span className="muted">{'★'.repeat(k + 2)}</span></h3>
           <ul className="specs">
-            {tier.map((sp, i) => <SpecRow key={sp.id} spec={sp} r={score?.bonus[k]?.[i]} stale={stale} />)}
+            {tier.map((sp, i) => <SpecRow key={sp.id} spec={sp} r={score?.bonus[k]?.[i]} stale={stale} prev={hist.prev[sp.id]} />)}
           </ul>
         </div>
       ))}

@@ -1,3 +1,4 @@
+import { useView } from '../game/settings';
 import { useT, type MessageKey } from '../i18n';
 import { useEditor } from '../schematic/store';
 import { Icon } from './Icon';
@@ -16,6 +17,7 @@ function Btn({ label, keyHint, active, disabled, onClick, icon }: {
 export function Toolbar({ onRun, running, progress }: { onRun: () => void; running: boolean; progress?: { done: number; total: number } }) {
   const { t } = useT();
   const ed = useEditor();
+  const view = useView();
   const k = (key: MessageKey) => t(key);
   const hasSel = ed.selection.length > 0;
   return (
@@ -33,6 +35,9 @@ export function Toolbar({ onRun, running, progress }: { onRun: () => void; runni
       <span className="tb-sep" />
       <Btn icon="undo" label={k('tool.undo')} keyHint="U / Ctrl+Z" disabled={!ed.past.length} onClick={ed.undo} />
       <Btn icon="redo" label={k('tool.redo')} keyHint="Shift+U / Ctrl+Y" disabled={!ed.future.length} onClick={ed.redo} />
+      <span className="tb-sep" />
+      <Btn icon="flow" label={k('tool.flow')} keyHint={k('tool.flowHint')} active={view.flow} onClick={() => view.setFlow(!view.flow)} />
+      <Btn icon="live" label={k('tool.live')} keyHint={k('tool.liveHint')} active={view.live} onClick={() => view.setLive(!view.live)} />
       <span className="tb-grow" />
       <button className="run" onClick={onRun} disabled={running} title={`${t('tool.run')} (Ctrl+Enter)`}>
         {running ? (progress && progress.total > 1 ? t('run.progress', { done: progress.done, total: progress.total }) : t('run.running')) : <><Icon name="play" size={14} /> {t('tool.run')}</>}

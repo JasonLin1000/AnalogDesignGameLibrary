@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSession } from '../game/session';
 import { useT } from '../i18n';
-import { mosRegion, partCurrent, plotFor } from '../sim/measure';
+import { useView } from '../game/settings';
+import { mosRegion, partCurrent, partOpVec, plotFor } from '../sim/measure';
+import { wireFlows, type PinCurrent } from './flow';
 import { analyze, key } from './connectivity';
 import { hitTest, itemsInBox, partBox, schematicBox, type Box } from './geometry';
 import { PARTS, isMos, pinPositions } from './parts';
 import { G, PartSymbol } from './PartSymbol';
 import { lRoute, moveItems, useEditor } from './store';
 import type { Pt, Schematic } from './types';
-import { formatEng } from './units';
+import { formatEng, parseSpice, scaleSpice } from './units';
 
 type Drag =
   | { mode: 'pan'; sx: number; sy: number; vx: number; vy: number; right?: boolean; moved?: boolean }
@@ -36,6 +38,37 @@ export function SchematicCanvas({ onRun }: { onRun: () => void }) {
   const conn = useMemo(() => analyze(shown), [shown]);
   const fresh = session.status === 'done' && session.simVersion === ed.version && session.result;
   const opPlot = fresh ? plotFor(session.result!, 'op') : null;
+  const flowOn = useView((v) => v.flow);
+
+  // current flowing into each part pin at the operating point (for the animated dots)
+  const flows = useMemo(() => {
+    if (!flowOn || !opPlot || !session.result) return [];
+    const res = session.result;
+    const pc: PinCurrent = (p, pin) => {
+      const two = (i: number | undefined, pos: string) => (i === undefined ? undefined : pin === pos ? i : -i);
+      switch (p.kind) {
+        case 'R': return two(partOpVec(res, p.name, 'i'), 'p');
+        case 'D': case 'LED': return two(partOpVec(res, p.name, 'i'), 'a');
+        case 'V': return two(partOpVec(res, p.name, 'i'), 'p');
+        case 'I': { const i = parseSpice(p.params.dc); return Number.isFinite(i) ? two(i, 'p') : undefined; }
+        case 'C': return 0;
+        case 'NMOS': case 'PMOS': case 'NFET': case 'PFET':
+          return pin === 'g' || pin === 'b' ? 0 : two(partOpVec(res, p.name, 'id'), 'd');
+        case 'PNP': return pin === 'b' ? 0 : two(partOpVec(res, p.name, 'i'), 'c');
+        default: return undefined; // ground, op-amp output...: solved by KCL when possible
+      }
+    };
+    return wireFlows(shown, pc);
+  }, [flowOn, opPlot, session.result, shown]);
+  const vMax = useMemo(() => {
+    if (!flowOn || !opPlot) return 0;
+    let m = 0;
+    for (const net of conn.netPoints.keys()) {
+      const v = opPlot.byName.get(net)?.re[0];
+      if (v !== undefined && Number.isFinite(v)) m = Math.max(m, Math.abs(v));
+    }
+    return m;
+  }, [flowOn, opPlot, conn]);
 
   // ---------- coordinates ----------
   const toWorld = (e: { clientX: number; clientY: number }): Pt => {
@@ -202,6 +235,16 @@ export function SchematicCanvas({ onRun }: { onRun: () => void }) {
           break;
         }
         case 'Delete': case 'Backspace': st.deleteSelection(); break;
+        case '[': case ']': {
+          // nudge the main value of the selected parts (R, C, source level, W ...) by 20 %
+          const f = k === ']' ? 1.25 : 0.8;
+          for (const p of st.sch.parts.filter((q) => st.selection.includes(q.id) && !q.locked)) {
+            const def = PARTS[p.kind].params.find((d) => !d.text && !p.lockedParams?.includes(d.key));
+            const v = def ? scaleSpice(p.params[def.key] ?? '', f) : null;
+            if (def && v) st.updatePart(p.id, p.name, { ...p.params, [def.key]: v });
+          }
+          break;
+        }
         default: return;
       }
       e.preventDefault();
@@ -217,6 +260,15 @@ export function SchematicCanvas({ onRun }: { onRun: () => void }) {
   const opV = (net: string) => {
     const v = opPlot?.byName.get(net);
     return v ? v.re[0] : undefined;
+  };
+
+  // wires tinted by node voltage: 0 V = plain wire colour, the highest |V| = full tint, negative = blue
+  const wireTint = (net: string | undefined) => {
+    if (!flowOn || !opPlot || !net || vMax <= 0) return undefined;
+    const v = net === '0' ? 0 : opV(net);
+    if (v === undefined) return undefined;
+    const pct = Math.round(Math.min(1, Math.abs(v) / vMax) * 85);
+    return { stroke: `color-mix(in srgb, var(${v < 0 ? '--v-neg' : '--v-pos'}) ${pct}%, var(--sch-wire))` };
   };
 
   const partNote = (name: string) => {
@@ -261,8 +313,18 @@ export function SchematicCanvas({ onRun }: { onRun: () => void }) {
           const net = conn.netOfPoint.get(key(w.a));
           return (
             <line key={w.id} x1={w.a.x * G} y1={w.a.y * G} x2={w.b.x * G} y2={w.b.y * G}
-              className={`wire${sel.has(w.id) ? ' selected' : ''}${w.locked ? ' locked' : ''}${hoverNet && net === hoverNet ? ' hover' : ''}`} />
+              className={`wire${sel.has(w.id) ? ' selected' : ''}${w.locked ? ' locked' : ''}${hoverNet && net === hoverNet ? ' hover' : ''}`}
+              style={sel.has(w.id) || (hoverNet && net === hoverNet) ? undefined : wireTint(net)} />
           );
+        })}
+        {/* animated current: dots run with conventional current, faster for more current */}
+        {flows.map((f, i) => {
+          const a = Math.abs(f.i);
+          if (a < 1e-12) return null;
+          const [p, q] = f.i > 0 ? [f.a, f.b] : [f.b, f.a];
+          const s = Math.min(1, Math.max(0, (Math.log10(a) + 9) / 7)); // 1 nA -> 0, 10 mA -> 1
+          return <line key={`f${i}`} x1={p.x * G} y1={p.y * G} x2={q.x * G} y2={q.y * G} className="flow"
+            style={{ animationDuration: `${(2.8 - 2.4 * s).toFixed(2)}s` }} />;
         })}
         {conn.junctions.map((p) => <circle key={`j${p.x},${p.y}`} cx={p.x * G} cy={p.y * G} r={3} className="junction" />)}
 

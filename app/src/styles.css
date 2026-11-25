@@ -3,6 +3,7 @@
   --bg: #faf9f5; --panel: #ffffff; --panel2: #f4f1ea; --ink: #1f1e1d; --muted: #6b655d; --line: #e6e1d6;
   --accent: #d97757; --accent-strong: #c15f3c; --accent-soft: #f7e6dc; --accent-ink: #ffffff;
   --ok: #3f7d4e; --bad: #b8402f; --warn: #a86415; --gold: #d39a2c;
+  --v-pos: #d2462a; --v-neg: #2f6fd0; --flow: #e0a21a;
   --sch-bg: #fdfcf8; --sch-grid: #d8d1c2; --sch-wire: #3c6e62; --sch-part: #2b2926; --sch-locked: #8a8277;
   --sch-label: #b4532d; --sch-sel: #d97757; --sch-volt: #2f5f9e; --sch-cur: #8a4fb0; --led-glow: #ff3b30;
   --lay-bg: #1c1b19; --lay-grid: #3a3732;
@@ -19,6 +20,7 @@
     --bg: #1f1e1c; --panel: #262523; --panel2: #2f2d2a; --ink: #f1ede4; --muted: #a59e92; --line: #3b3834;
     --accent: #e08a6c; --accent-strong: #eb9d80; --accent-soft: #3d2c24; --accent-ink: #1f1e1c;
     --ok: #7fbf8c; --bad: #ec8a7a; --warn: #e0a95c; --gold: #e8b85a;
+    --v-pos: #ff7a5c; --v-neg: #6ea8ff; --flow: #ffd166;
     --sch-bg: #1b1a18; --sch-grid: #3a3732; --sch-wire: #82b9a8; --sch-part: #ebe6da; --sch-locked: #8f887d;
     --sch-label: #f0a37f; --sch-sel: #e08a6c; --sch-volt: #8fb4e8; --sch-cur: #c9a3e3; --led-glow: #ff5a50;
     --lay-bg: #161513; --lay-grid: #34312d;
@@ -31,6 +33,7 @@
   --bg: #1f1e1c; --panel: #262523; --panel2: #2f2d2a; --ink: #f1ede4; --muted: #a59e92; --line: #3b3834;
   --accent: #e08a6c; --accent-strong: #eb9d80; --accent-soft: #3d2c24; --accent-ink: #1f1e1c;
   --ok: #7fbf8c; --bad: #ec8a7a; --warn: #e0a95c; --gold: #e8b85a;
+  --v-pos: #ff7a5c; --v-neg: #6ea8ff; --flow: #ffd166;
   --sch-bg: #1b1a18; --sch-grid: #3a3732; --sch-wire: #82b9a8; --sch-part: #ebe6da; --sch-locked: #8f887d;
   --sch-label: #f0a37f; --sch-sel: #e08a6c; --sch-volt: #8fb4e8; --sch-cur: #c9a3e3; --led-glow: #ff5a50;
   --lay-bg: #161513; --lay-grid: #34312d;
@@ -544,3 +547,14 @@ button.danger:hover:not(:disabled) { border-color: var(--bad); background: color
   .level-tags { display: none; }
   .about div { grid-template-columns: 1fr; gap: 2px; }
 }
+
+/* ---------- current-flow view (beta) ---------- */
+.flow { stroke: var(--flow); stroke-width: 4.2; stroke-linecap: round; stroke-dasharray: 0.01 13; fill: none; pointer-events: none; animation: flow-run linear infinite; }
+@keyframes flow-run { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -13.01; } }
+@media (prefers-reduced-motion: reduce) { .flow { animation: none; } }
+.spec .trend { margin-left: 6px; font-size: calc(10px * var(--fs)); }
+.spec .trend.up { color: var(--ok); } .spec .trend.down { color: var(--bad); }
+.spec .gauge { grid-column: 2 / 4; position: relative; height: 4px; margin-top: 4px; border-radius: 99px; background: color-mix(in srgb, var(--muted) 18%, transparent); overflow: hidden; }
+.spec .gauge::after { content: ''; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1.5px; background: var(--muted); }
+.spec .gauge-fill { position: absolute; top: 0; bottom: 0; border-radius: 99px; transition: width .35s ease; }
+.spec .gauge-fill.in { background: var(--ok); } .spec .gauge-fill.out { background: var(--bad); }
