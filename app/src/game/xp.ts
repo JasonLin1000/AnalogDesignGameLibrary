@@ -1,4 +1,5 @@
-// Experience and rank: stars (10 XP each) plus concept checks answered right on the first try (5 XP each).
+// Experience and rank: stars (10 XP each), concept checks answered right on the first try (5 XP each)
+// and achievements (15 XP each).
 import { create } from 'zustand';
 import type { Localized } from '../i18n';
 import { L } from '../levels/build';
@@ -25,8 +26,8 @@ export const RANKS: { xp: number; title: Localized }[] = [
   { xp: 600, title: L('首席工程師', 'Principal engineer') },
 ];
 
-export function experience(stars: Record<string, number>, answers: Record<string, boolean>) {
-  const xp = Object.values(stars).reduce((s, n) => s + n * 10, 0) + Object.values(answers).filter(Boolean).length * 5;
+export function experience(stars: Record<string, number>, answers: Record<string, boolean>, achievements = 0) {
+  const xp = Object.values(stars).reduce((s, n) => s + n * 10, 0) + Object.values(answers).filter(Boolean).length * 5 + achievements * 15;
   let i = 0;
   while (i + 1 < RANKS.length && xp >= RANKS[i + 1].xp) i++;
   const next = RANKS[i + 1];

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { touchDay, trackPass, type Achievement } from '../game/achievements';
 import { nextLevel, useProgress } from '../game/progress';
 import { useT, type MessageKey } from '../i18n';
 import { maxStars } from '../levels/evaluate';
@@ -41,6 +42,7 @@ export function LayoutWorkbench({ level, onExit, onGoto }: { level: LayoutLevel;
   const progress = useProgress();
   const [check, setCheck] = useState<{ r: LayoutCheck; version: number } | null>(null);
   const [focus, setFocus] = useState<number | null>(null);
+  const [achv, setAchv] = useState<Achievement[]>([]);
   const [tab, setTab] = useState<'ref' | 'drc' | 'lvs' | 'ex' | 'lde' | 'post' | 'yield'>('ref');
   const [running, setRunning] = useState(false);
   const [prog, setProg] = useState({ done: 0, total: 0 });
@@ -80,7 +82,12 @@ export function LayoutWorkbench({ level, onExit, onGoto }: { level: LayoutLevel;
         if (hasYield && r.post) setTab('yield');
       } finally { setRunning(false); }
     }
-    if (r.stars > 0) { progress.record(level.id, r.stars); setSuccess(r.stars); } else sfx.fail();
+    touchDay();
+    if (r.stars > 0) {
+      const before = useProgress.getState().stars[level.id] ?? 0;
+      progress.record(level.id, r.stars); setSuccess(r.stars);
+      setAchv(trackPass({ levelId: level.id, earned: r.stars, max: maxStars(level), before, stars: useProgress.getState().stars }, true));
+    } else sfx.fail();
   };
 
   const ex = useMemo(() => (st.tool.kind === 'net' ? extract(st.doc) : null), [st.doc, st.tool.kind]);
@@ -246,7 +253,7 @@ export function LayoutWorkbench({ level, onExit, onGoto }: { level: LayoutLevel;
       <LayoutLabelPrompt />
       <PcellPrompt />
       {success !== null && (
-        <SuccessModal level={level} stars={success} hasNext={!!next} onStay={() => setSuccess(null)} onNext={() => { setSuccess(null); if (next) onGoto(next.id); }} />
+        <SuccessModal level={level} stars={success} hasNext={!!next} achv={achv} onStay={() => setSuccess(null)} onNext={() => { setSuccess(null); if (next) onGoto(next.id); }} />
       )}
     </div>
   );

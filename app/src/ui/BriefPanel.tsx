@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { sfx } from '../game/sfx';
 import { useProgress } from '../game/progress';
 import { circuitToSchematic } from '../levels/autoplace';
 import { useSession } from '../game/session';
@@ -40,7 +41,7 @@ export function specMargin(spec: Spec, v: number): number | null {
   return null;
 }
 
-function SpecRow({ spec, r, stale, prev }: { spec: Spec; r?: SpecResult; stale: boolean; prev?: number }) {
+function SpecRow({ spec, r, stale, prev, flash }: { spec: Spec; r?: SpecResult; stale: boolean; prev?: number; flash?: boolean }) {
   const { t, L } = useT();
   const state = !r || stale ? 'pending' : r.pass ? 'pass' : 'fail';
   const m = r && !stale && !r.error ? specMargin(spec, r.value) : null;
@@ -48,7 +49,7 @@ function SpecRow({ spec, r, stale, prev }: { spec: Spec; r?: SpecResult; stale: 
   const trend = m !== null && pm !== null && Math.abs(m - pm) > 1e-3 ? (m > pm ? 'up' : 'down') : null;
   const fill = m === null ? 0 : Math.max(-1, Math.min(1, m)); // -1..1, drawn around the centre line
   return (
-    <li className={`spec ${state}`}>
+    <li className={`spec ${state}${flash && state === 'pass' ? ' flash' : ''}`}>
       <span className="spec-icon" aria-hidden="true">{state === 'pass' ? <Icon name="check" size={14} /> : state === 'fail' ? <Icon name="close" size={14} /> : <span className="dot" />}</span>
       <span className="spec-label">{L(spec.label)}{spec.over === 'pvt' && <span className="tag">PVT</span>}{spec.over === 'mc' && <span className="tag">{spec.stat === 'abs3sigma' ? 'MC |μ|+3σ' : 'MC'}</span>}</span>
       <span className="spec-target">{fmtTarget(spec)}</span>
@@ -87,13 +88,21 @@ export function BriefPanel({ level, best, onIntro }: { level: Level; best: numbe
   const sch = useEditor((e) => e.sch);
   const circuit = useMemo(() => (level.guide ? toCircuit(sch).circuit : null), [sch, level.guide]);
   // previous run's values, for the "closer / further than last time" arrows
-  const hist = useMemo(() => ({ score: null as unknown, prev: {} as Record<string, number>, cur: {} as Record<string, number> }), [level.id]);
+  const hist = useMemo(() => ({ score: null as unknown, prev: {} as Record<string, number>, cur: {} as Record<string, number>, pass: {} as Record<string, boolean>, flipped: [] as string[], gen: 0 }), [level.id]);
   if (score && hist.score !== score) {
     const cur: Record<string, number> = {};
     level.specs.forEach((sp, i) => { const r = score.main[i]; if (r && !r.error) cur[sp.id] = r.value; });
     level.stars?.forEach((tier, k) => tier.forEach((sp, i) => { const r = score.bonus[k]?.[i]; if (r && !r.error) cur[sp.id] = r.value; }));
-    hist.prev = hist.cur; hist.cur = cur; hist.score = score;
+    // specs that just turned green flash and ring a rising scale
+    const pass: Record<string, boolean> = {};
+    level.specs.forEach((sp, i) => { pass[sp.id] = !!score.main[i]?.pass; });
+    level.stars?.forEach((tier, k) => tier.forEach((sp, i) => { pass[sp.id] = !!score.bonus[k]?.[i]?.pass; }));
+    hist.flipped = Object.keys(pass).filter((id) => pass[id] && !hist.pass[id]);
+    hist.prev = hist.cur; hist.cur = cur; hist.score = score; hist.pass = pass; hist.gen++;
   }
+  useEffect(() => { hist.flipped.forEach((_, k) => sfx.ding(k)); }, [score]); // eslint-disable-line react-hooks/exhaustive-deps
+  const rowKey = (id: string) => (hist.flipped.includes(id) ? `${id}-${hist.gen}` : id);
+  const flash = (id: string) => !stale && hist.flipped.includes(id);
   return (
     <aside className="brief" aria-label={t('brief.title')}>
       <div className="brief-head">
@@ -115,13 +124,13 @@ export function BriefPanel({ level, best, onIntro }: { level: Level; best: numbe
 
       <h3>{t('brief.specs')} <span className="muted">★</span></h3>
       <ul className="specs">
-        {level.specs.map((sp, i) => <SpecRow key={sp.id} spec={sp} r={score?.main[i]} stale={stale} prev={hist.prev[sp.id]} />)}
+        {level.specs.map((sp, i) => <SpecRow key={rowKey(sp.id)} spec={sp} r={score?.main[i]} stale={stale} prev={hist.prev[sp.id]} flash={flash(sp.id)} />)}
       </ul>
       {level.stars?.map((tier, k) => (
         <div key={k}>
           <h3 className="bonus">{t('brief.bonus')} <span className="muted">{'★'.repeat(k + 2)}</span></h3>
           <ul className="specs">
-            {tier.map((sp, i) => <SpecRow key={sp.id} spec={sp} r={score?.bonus[k]?.[i]} stale={stale} prev={hist.prev[sp.id]} />)}
+            {tier.map((sp, i) => <SpecRow key={rowKey(sp.id)} spec={sp} r={score?.bonus[k]?.[i]} stale={stale} prev={hist.prev[sp.id]} flash={flash(sp.id)} />)}
           </ul>
         </div>
       ))}

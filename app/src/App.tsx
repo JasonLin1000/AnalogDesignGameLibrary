@@ -13,16 +13,19 @@ import { LayoutWorkbench } from './ui/LayoutWorkbench';
 import { LevelEditor } from './ui/LevelEditor';
 import { Prologue, seenPrologue } from './ui/Prologue';
 import { Workbench } from './ui/Workbench';
+import { Toasts } from './ui/Toasts';
+import { AchievementsPage } from './ui/AchievementsPage';
 
 type Route =
   | { page: 'home' } | { page: 'level'; id: string } | { page: 'sandbox' } | { page: 'codex' }
-  | { page: 'editor'; id?: string } | { page: 'custom'; id: string } | { page: 'settings' };
+  | { page: 'editor'; id?: string } | { page: 'custom'; id: string } | { page: 'settings' } | { page: 'achv' };
 
 function parseHash(): Route {
   const h = location.hash.replace(/^#\/?/, '');
   if (h === 'sandbox') return { page: 'sandbox' };
   if (h === 'codex') return { page: 'codex' };
   if (h === 'settings') return { page: 'settings' };
+  if (h === 'achievements') return { page: 'achv' };
   let m = h.match(/^editor(?:\/(.+))?$/);
   if (m) return { page: 'editor', id: m[1] };
   m = h.match(/^custom\/(.+)$/);
@@ -58,6 +61,7 @@ export function App() {
         <nav className="appnav">
           <button className={route.page === 'home' ? 'active' : ''} onClick={() => go('')}>{t('nav.home')}</button>
           <button className={route.page === 'codex' ? 'active' : ''} onClick={() => go('codex')}><Icon name="book" /> {t('nav.codex')}</button>
+          <button className={route.page === 'achv' ? 'active' : ''} onClick={() => go('achievements')}><Icon name="trophy" /> {t('nav.achv')}</button>
           <button className={route.page === 'settings' ? 'active' : ''} onClick={() => go('settings')}><Icon name="gear" /> {t('nav.settings')}</button>
         </nav>
       </header>
@@ -75,6 +79,8 @@ export function App() {
         ? <Workbench level={customLevel} onExit={() => go('')} onGoto={() => go('')} />
         : <main className="home"><p className="empty">{t('custom.missing')}</p></main>)}
       {route.page === 'settings' && <SettingsPage onStory={() => setStory(true)} />}
+      {route.page === 'achv' && <AchievementsPage />}
+      <Toasts />
       {story && <Prologue onClose={() => setStory(false)} />}
     </div>
   );

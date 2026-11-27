@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { downloadJson, readJsonFile, useCustom, validateLevel } from '../game/custom';
 import { chapterComplete, chapterUnlocked, levelUnlocked, passed, useProgress } from '../game/progress';
 import { experience, useQuiz } from '../game/xp';
+import { ACHIEVEMENTS, liveStreak, useAchv } from '../game/achievements';
 import { useT } from '../i18n';
 import { CHAPTERS } from '../levels';
 import { maxStars } from '../levels/evaluate';
@@ -31,7 +32,10 @@ export function HomeScreen({ onPlay, onSandbox }: { onPlay: (id: string) => void
   const ch = CHAPTERS.find((c) => c.id === sel) ?? CHAPTERS[0];
   const total = CHAPTERS.flatMap((c) => c.levels).reduce((s, l) => s + maxStars(l), 0);
   const got = Object.values(p.stars).reduce((s, n) => s + n, 0);
-  const xp = experience(p.stars, answers);
+  const achv = useAchv();
+  const nAchv = Object.keys(achv.unlocked).length;
+  const xp = experience(p.stars, answers, nAchv);
+  const streak = liveStreak(achv.stats);
   const curCh = CHAPTERS.find((c) => c.id === curChapter)!;
   const test = curCh.levels.find((l) => l.skipTest);
 
@@ -73,6 +77,10 @@ export function HomeScreen({ onPlay, onSandbox }: { onPlay: (id: string) => void
           </div>
           <span className="rank-next">{xp.next ? t('rank.next', { xp: xp.xp, need: xp.next.xp - xp.xp, name: L(xp.next.title) }) : t('rank.max', { xp: xp.xp })}</span>
           <span className="rank-stars"><span className="stars"><span className="on">★</span></span> {got} / {total}</span>
+          <span className="rank-extra">
+            <button className="link" onClick={() => { location.hash = 'achievements'; }} title={t('nav.achv')}><Icon name="trophy" size={15} /> {nAchv} / {ACHIEVEMENTS.length}</button>
+            <span className={`streak${streak > 0 ? ' lit' : ''}`} title={t('achv.streakHint')}><Icon name="flame" size={15} /> {t('home.streak', { n: streak })}</span>
+          </span>
         </aside>
       </section>
 

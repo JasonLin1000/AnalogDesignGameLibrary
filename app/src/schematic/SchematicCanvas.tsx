@@ -2,15 +2,19 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSession } from '../game/session';
 import { useT } from '../i18n';
 import { useView } from '../game/settings';
-import { mosRegion, partCurrent, partOpVec, plotFor } from '../sim/measure';
-import { wireFlows, type PinCurrent } from './flow';
+import { mosRegion, partCurrent, plotFor } from '../sim/measure';
+import { RATING, partPower, pinCurrentFor } from '../sim/heat';
+import { trackBurn, trackNudge } from '../game/achievements';
+import { sfx } from '../game/sfx';
+import { useToasts } from '../game/toast';
+import { wireFlows } from './flow';
 import { analyze, key } from './connectivity';
 import { hitTest, itemsInBox, partBox, schematicBox, type Box } from './geometry';
 import { PARTS, isMos, pinPositions } from './parts';
 import { G, PartSymbol } from './PartSymbol';
 import { lRoute, moveItems, useEditor } from './store';
 import type { Pt, Schematic } from './types';
-import { formatEng, parseSpice, scaleSpice } from './units';
+import { formatEng, scaleSpice } from './units';
 
 type Drag =
   | { mode: 'pan'; sx: number; sy: number; vx: number; vy: number; right?: boolean; moved?: boolean }
@@ -43,23 +47,43 @@ export function SchematicCanvas({ onRun }: { onRun: () => void }) {
   // current flowing into each part pin at the operating point (for the animated dots)
   const flows = useMemo(() => {
     if (!flowOn || !opPlot || !session.result) return [];
-    const res = session.result;
-    const pc: PinCurrent = (p, pin) => {
-      const two = (i: number | undefined, pos: string) => (i === undefined ? undefined : pin === pos ? i : -i);
-      switch (p.kind) {
-        case 'R': return two(partOpVec(res, p.name, 'i'), 'p');
-        case 'D': case 'LED': return two(partOpVec(res, p.name, 'i'), 'a');
-        case 'V': return two(partOpVec(res, p.name, 'i'), 'p');
-        case 'I': { const i = parseSpice(p.params.dc); return Number.isFinite(i) ? two(i, 'p') : undefined; }
-        case 'C': return 0;
-        case 'NMOS': case 'PMOS': case 'NFET': case 'PFET':
-          return pin === 'g' || pin === 'b' ? 0 : two(partOpVec(res, p.name, 'id'), 'd');
-        case 'PNP': return pin === 'b' ? 0 : two(partOpVec(res, p.name, 'i'), 'c');
-        default: return undefined; // ground, op-amp output...: solved by KCL when possible
-      }
-    };
+    const pc = pinCurrentFor(session.result);
     return wireFlows(shown, pc);
   }, [flowOn, opPlot, session.result, shown]);
+  // operating-point power of every rated part: glow when warm, smoke past the rating
+  const heat = useMemo(() => {
+    const m = new Map<string, { f: number; w: number }>(); // part id -> power / rating, watts
+    if (!fresh || !opPlot) return m;
+    const res = session.result!;
+    for (const p of shown.parts) {
+      const rating = RATING[p.kind];
+      if (!rating) continue;
+      const pins = pinPositions(p);
+      const w = partPower(res, p, pins.map((q) => q.name), (pin) => {
+        const q = pins.find((x) => x.name === pin);
+        return q ? conn.netOfPoint.get(key(q.pt)) : undefined;
+      });
+      if (w !== undefined) m.set(p.id, { f: w / rating, w });
+    }
+    return m;
+  }, [fresh, opPlot, session.result, shown, conn]);
+
+  // a new result with burnt parts: crackle, shake, toast (once per result)
+  const burnSeen = useRef<unknown>(null);
+  const [shaking, setShaking] = useState(false);
+  useEffect(() => {
+    if (!fresh || burnSeen.current === session.result) return;
+    burnSeen.current = session.result;
+    const ids = [...heat].filter(([, h]) => h.f >= 1).map(([id]) => id);
+    if (!ids.length) return;
+    sfx.burn();
+    trackBurn(ids.length);
+    setShaking(true);
+    setTimeout(() => setShaking(false), 650);
+    const names = ids.map((id) => sch.parts.find((p) => p.id === id)?.name).filter(Boolean).join(', ');
+    useToasts.getState().push({ kind: 'warn', icon: 'smoke', title: t('burn.title', { names }), body: t('burn.body') });
+  }, [fresh, heat, session.result]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const vMax = useMemo(() => {
     if (!flowOn || !opPlot) return 0;
     let m = 0;
@@ -241,7 +265,7 @@ export function SchematicCanvas({ onRun }: { onRun: () => void }) {
           for (const p of st.sch.parts.filter((q) => st.selection.includes(q.id) && !q.locked)) {
             const def = PARTS[p.kind].params.find((d) => !d.text && !p.lockedParams?.includes(d.key));
             const v = def ? scaleSpice(p.params[def.key] ?? '', f) : null;
-            if (def && v) st.updatePart(p.id, p.name, { ...p.params, [def.key]: v });
+            if (def && v) { st.updatePart(p.id, p.name, { ...p.params, [def.key]: v }); trackNudge(); }
           }
           break;
         }
@@ -279,7 +303,7 @@ export function SchematicCanvas({ onRun }: { onRun: () => void }) {
   return (
     <svg
       ref={svgRef}
-      className={`sch-canvas tool-${tool.kind}`}
+      className={`sch-canvas tool-${tool.kind}${shaking ? ' shake' : ''}`}
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}
@@ -293,6 +317,11 @@ export function SchematicCanvas({ onRun }: { onRun: () => void }) {
         <pattern id="grid" width={gridStep} height={gridStep} patternUnits="userSpaceOnUse" x={view.x} y={view.y}>
           {gridStep >= 6 && <circle cx={0} cy={0} r={gridStep >= 14 ? 1.1 : 0.8} className="grid-dot" />}
         </pattern>
+        <radialGradient id="heatglow">
+          <stop offset="0%" stopColor="var(--heat)" stopOpacity="0.85" />
+          <stop offset="60%" stopColor="var(--heat)" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="var(--heat)" stopOpacity="0" />
+        </radialGradient>
         <radialGradient id="ledglow">
           <stop offset="0%" stopColor="var(--led-glow)" stopOpacity="0.95" />
           <stop offset="100%" stopColor="var(--led-glow)" stopOpacity="0" />
@@ -306,6 +335,16 @@ export function SchematicCanvas({ onRun }: { onRun: () => void }) {
           const a = Math.max(0, Math.min(1, i / 0.012));
           if (a < 0.03) return null;
           return <circle key={`glow${p.id}`} cx={p.x * G} cy={p.y * G} r={G * (2 + 3 * a)} fill="url(#ledglow)" opacity={a} />;
+        })}
+
+        {/* heat halo behind warm parts */}
+        {shown.parts.map((p) => {
+          const h = heat.get(p.id);
+          if (!h || h.f < 0.35) return null;
+          const b = partBox(p);
+          const a = Math.min(1, (h.f - 0.3) / 0.7);
+          return <circle key={`heat${p.id}`} cx={(b.x0 + b.x1) / 2 * G} cy={(b.y0 + b.y1) / 2 * G} r={G * (1.8 + 1.4 * a)}
+            fill="url(#heatglow)" opacity={a} className={h.f >= 1 ? 'heat burning' : 'heat'} />;
         })}
 
         {/* wires */}
@@ -343,7 +382,7 @@ export function SchematicCanvas({ onRun }: { onRun: () => void }) {
           let region: number | null = null;
           if (fresh && isMos(p.kind)) { try { region = mosRegion(session.result!, p.name); } catch { region = null; } }
           return (
-            <g key={p.id} className={`part${sel.has(p.id) ? ' selected' : ''}${p.locked ? ' locked' : ''}`}>
+            <g key={p.id} className={`part${sel.has(p.id) ? ' selected' : ''}${p.locked ? ' locked' : ''}${(heat.get(p.id)?.f ?? 0) >= 1 ? ' burnt' : ''}`}>
               <PartSymbol kind={p.kind} x={p.x} y={p.y} rot={p.rot} mirror={p.mirror} />
               {p.kind !== 'GND' && (
                 <text x={tx * G} y={ty * G} className="part-name" textAnchor={vertical ? 'start' : 'middle'}>
@@ -356,11 +395,27 @@ export function SchematicCanvas({ onRun }: { onRun: () => void }) {
                   {formatEng(cur, 'A')}
                 </text>
               )}
+              {(heat.get(p.id)?.f ?? 0) >= 0.35 && (
+                <text x={tx * G} y={(ry + (region !== null ? 2.6 : 1.3)) * G} className={`annot-heat${heat.get(p.id)!.f >= 1 ? ' over' : ''}`} textAnchor={vertical ? 'start' : 'middle'}>
+                  {formatEng(heat.get(p.id)!.w, 'W')} · {Math.round(heat.get(p.id)!.f * 100)}%
+                </text>
+              )}
               {region !== null && (
                 <text x={tx * G} y={(ry + 1.3) * G} className={`region r${region}`} textAnchor={vertical ? 'start' : 'middle'}>
                   {t(region === 2 ? 'region.sat' : region === 1 ? 'region.triode' : 'region.off')}
                 </text>
               )}
+            </g>
+          );
+        })}
+
+        {/* magic smoke rising from burnt parts */}
+        {shown.parts.filter((p) => (heat.get(p.id)?.f ?? 0) >= 1).map((p) => {
+          const b = partBox(p);
+          const cx = (b.x0 + b.x1) / 2 * G, cy = (b.y0 + b.y1) / 2 * G;
+          return (
+            <g key={`smoke${p.id}`} className="smoke" aria-hidden="true">
+              {[0, 1, 2, 3].map((k) => <circle key={k} cx={cx + (k % 2 ? 5 : -4)} cy={cy - 4} r={5 + k} className="puff" style={{ animationDelay: `${k * 0.45}s` }} />)}
             </g>
           );
         })}

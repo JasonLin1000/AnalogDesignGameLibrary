@@ -19,6 +19,14 @@ import { IntroCards, hasIntro, introSeen } from './IntroCards';
 import { NextLevelButton } from './NextLevelButton';
 import { StatusBar, Toolbar } from './Toolbar';
 import { Icon } from './Icon';
+import { trackPass, trackSim, type Achievement } from '../game/achievements';
+import { parParts, playerPartCount, useRecords, type Metric, type Rec } from '../game/records';
+import { supplyPower } from '../sim/heat';
+import { mosRegion } from '../sim/measure';
+import { isMos } from '../schematic/parts';
+import { maxStars } from '../levels/evaluate';
+
+export interface DesignReport { rec: Rec; prev?: Rec; improved: Metric[]; par?: number; achv: Achievement[] }
 
 const draftKey = (id: string) => `adg.draft.${id}`;
 function loadDraft(id: string): Schematic | null {
@@ -35,6 +43,8 @@ export function Workbench({ level, onExit, onGoto }: { level: Level | null; onEx
   const [intro, setIntro] = useState(false);
   const docKey = level ? level.id : 'sandbox';
   const lastRun = useRef(-1);
+  const visit = useRef({ t0: Date.now(), sims: 0, fails: 0 });
+  const [design, setDesign] = useState<DesignReport | undefined>();
 
   // load document
   useEffect(() => {
@@ -44,6 +54,8 @@ export function Workbench({ level, onExit, onGoto }: { level: Level | null; onEx
     setSuccess(null);
     setIntro(!!level && hasIntro(level.id) && !introSeen(level.id));
     lastRun.current = useEditor.getState().version; // live mode waits for the first edit
+    visit.current = { t0: Date.now(), sims: 0, fails: 0 };
+    setDesign(undefined);
   }, [docKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // autosave drafts (per-viewer convenience)
@@ -59,6 +71,13 @@ export function Workbench({ level, onExit, onGoto }: { level: Level | null; onEx
     lastRun.current = ed.version;
     await session.start({ sch: ed.sch, version: ed.version, level, analyses, corner: level?.corner ?? setup.corner, sweep: level ? undefined : setupToSweep(setup) });
     const s = useSession.getState();
+    if (s.status === 'done' && s.result) {
+      visit.current.sims++;
+      const res = s.result;
+      const saturated = res.circuit.parts.some((p) => { if (!isMos(p.kind)) return false; try { return mosRegion(res, p.name) === 2; } catch { return false; } });
+      trackSim({ sandbox: !level, saturated });
+    }
+    if (level && s.status === 'done' && s.score && s.score.stars === 0) visit.current.fails++;
     if (!level && s.status === 'done' && !s.probes.length) {
       // sandbox: probe every labelled net by default
       const kind = analyses.find((a) => a.kind !== 'op' && a.kind !== 'noise')?.kind;
@@ -68,8 +87,19 @@ export function Workbench({ level, onExit, onGoto }: { level: Level | null; onEx
     if (level && s.score && s.score.stars > 0) {
       const before = useProgress.getState().stars[level.id] ?? 0;
       progress.record(level.id, s.score.stars);
+      // design record: parts added, supply power, time since opening the level, simulations this visit
+      const par = parParts(level);
+      const rec: Rec = { parts: playerPartCount(level, ed.sch), power: s.result ? supplyPower(s.result) : undefined, time: (Date.now() - visit.current.t0) / 1000, sims: visit.current.sims };
+      const { improved, prev } = useRecords.getState().submit(level.id, rec);
       // in live mode only interrupt the player for a new best, not on every tweak
-      if (!useView.getState().live || s.score.stars > before) setSuccess(s.score.stars);
+      const show = !useView.getState().live || s.score.stars > before;
+      const achv = trackPass({
+        levelId: level.id, earned: s.score.stars, max: maxStars(level), before, stars: useProgress.getState().stars,
+        sims: visit.current.sims, fails: visit.current.fails, seconds: rec.time, live: useView.getState().live,
+        swept: level.specs.some((sp) => sp.over === 'pvt' || sp.over === 'mc'), parts: rec.parts, par, improved: improved.length > 0,
+      }, show);
+      setDesign({ rec, prev, improved, par, achv });
+      if (show) setSuccess(s.score.stars);
     }
   };
 
@@ -115,7 +145,7 @@ export function Workbench({ level, onExit, onGoto }: { level: Level | null; onEx
       <PropertyDialog />
       <LabelPrompt />
       {level && success !== null && (
-        <SuccessModal level={level} stars={success} hasNext={!!next}
+        <SuccessModal level={level} stars={success} hasNext={!!next} design={design}
           onStay={() => setSuccess(null)} onNext={() => { setSuccess(null); if (next) onGoto(next.id); }} />
       )}
     </div>
